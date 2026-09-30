@@ -35,7 +35,7 @@ function Find-Python {
 }
 
 if (-not (Test-Path -LiteralPath $Requirements)) {
-    throw "requirements.txt introuvable: $Requirements"
+    throw "requirements.txt not found: $Requirements"
 }
 
 $Python = Find-Python
@@ -43,19 +43,19 @@ $Python = Find-Python
 if (-not $Python -and $InstallPythonWithWinget) {
     $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
     if (-not $winget) {
-        throw "winget introuvable. Installe Python 3 manuellement depuis https://www.python.org/downloads/"
+        throw "winget not found. Install Python 3 manually from https://www.python.org/downloads/"
     }
 
-    Write-Host "[python] Installation Python 3 via winget..."
+    Write-Host "[python] Installing Python 3 via winget..."
     winget install --id Python.Python.3.12 --source winget --accept-package-agreements --accept-source-agreements
     $Python = Find-Python
 }
 
 if (-not $Python) {
     Write-Host ""
-    Write-Host "Python 3 introuvable."
-    Write-Host "Option 1: installe Python 3 depuis https://www.python.org/downloads/"
-    Write-Host "Option 2: relance ce script avec:"
+    Write-Host "Python 3 not found."
+    Write-Host "Option 1: install Python 3 from https://www.python.org/downloads/"
+    Write-Host "Option 2: rerun this script with:"
     Write-Host '  powershell -NoProfile -ExecutionPolicy Bypass -File ".\install_dependencies.ps1" -InstallPythonWithWinget'
     exit 1
 }
@@ -65,7 +65,7 @@ Write-Host "[python] $($Python.Exe) $($Python.Args -join ' ')"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 if ($Force -and (Test-Path -LiteralPath $Deps)) {
-    Write-Host "[deps] Suppression pydeps existant..."
+    Write-Host "[deps] Removing existing pydeps..."
     Remove-Item -LiteralPath $Deps -Recurse -Force
 }
 
@@ -75,13 +75,13 @@ Write-Host "[pip] Upgrade pip..."
 & $Python.Exe @($Python.Args) -m pip install --upgrade pip
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Host "[deps] Installation dans: $Deps"
+Write-Host "[deps] Installing into: $Deps"
 & $Python.Exe @($Python.Args) -m pip install --upgrade --target $Deps -r $Requirements
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host ""
-Write-Host "[OK] Dependances installees."
-Write-Host "Tu peux lancer:"
+Write-Host "[OK] Dependencies installed."
+Write-Host "You can launch:"
 Write-Host ("  " + (Join-Path $PackageRoot "LANCER_UNLOCKER.bat"))
-Write-Host 'ou:'
+Write-Host 'or:'
 Write-Host '  powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.94 -Mode all'
