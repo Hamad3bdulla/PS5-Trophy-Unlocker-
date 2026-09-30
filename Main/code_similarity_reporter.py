@@ -405,7 +405,7 @@ def build_text_report(
     if only_b_funcs:
         for name in only_b_funcs:
             fb = funcs_b[name]
-            out.append(f"- {name}: lines {fb.start}-{fb.end}, {fb.line_count} lignes")
+            out.append(f"- {name}: lines {fb.start}-{fb.end}, {fb.line_count} lines")
     else:
         out.append("No added function detected in B.")
     out.append("")
@@ -416,7 +416,7 @@ def build_text_report(
     if only_a_funcs:
         for name in only_a_funcs:
             fa = funcs_a[name]
-            out.append(f"- {name}: lines {fa.start}-{fa.end}, {fa.line_count} lignes")
+            out.append(f"- {name}: lines {fa.start}-{fa.end}, {fa.line_count} lines")
     else:
         out.append("No function from A is missing from B by name.")
     out.append("")
@@ -431,7 +431,7 @@ def build_text_report(
             out.append(
                 f"Exact block #{n}: A lines {block.a_start}-{block.a_start + block.size - 1} "
                 f"<=> B lines {block.b_start}-{block.b_start + block.size - 1} "
-                f"({block.size} lignes)"
+                f"({block.size} lines)"
             )
     out.append("")
 
@@ -446,7 +446,7 @@ def build_text_report(
             out.append(
                 f"Normalized block #{n}: A lines {block.a_start}-{block.a_start + block.size - 1} "
                 f"<=> B lines {block.b_start}-{block.b_start + block.size - 1} "
-                f"({block.size} lignes)"
+                f"({block.size} lines)"
             )
     out.append("")
 
@@ -601,7 +601,7 @@ def build_html_report(
 <header>
     <h1>Code similarity report</h1>
     <div class="legend">
-        <span class="exactKey">Vert: repris exactement</span>
+        <span class="exactKey">Green: exact reuse</span>
         <span class="changedKey">Yellow: modified / similar</span>
         <span class="uniqueKey">Red: unique to the file</span>
     </div>
