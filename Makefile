@@ -38,7 +38,7 @@ $(PROBE_ELF): Main/fw1360_probe.c
 
 $(REMOTE_PROBE_ELF): $(SOURCE)
 	mkdir -p $(DIST_DIR)
-	$(CC) $(CFLAGS) -DENABLE_REMOTE_GAME_DIAG=1 -DBUILD_TAG=\"FW13.60-remote-trophy-probe\" -o $@ $<
+	$(CC) $(CFLAGS) -DENABLE_REMOTE_GAME_DIAG=1 -UBUILD_TAG -DBUILD_TAG=\"FW13.60-remote-trophy-probe\" -o $@ $<
 
 clean:
 	rm -rf $(BUILD_DIR) $(DIST_DIR)
