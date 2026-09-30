@@ -3,6 +3,7 @@ import asyncio
 import ftplib
 import io
 import re
+import socket
 import sys
 from pathlib import Path
 
@@ -61,6 +62,21 @@ def score_game_process(row):
     if "elfldr" in lname or "payload" in lname or "ftpsrv" in lname:
         score -= 100
     return score
+
+
+def send_elf_via_loader(host, port, elf_path):
+    payload = Path(elf_path).read_bytes()
+    print(f"[elfldr] connecting {host}:{port}")
+    try:
+        with socket.create_connection((host, port), timeout=5) as sock:
+            print(f"[elfldr] sending {len(payload)} bytes")
+            sock.sendall(payload)
+    except OSError as exc:
+        print(f"[elfldr] error {type(exc).__name__}: {exc}")
+        return False
+
+    print("[elfldr] payload sent successfully")
+    return True
 
 
 def parse_ftp_ports(text):
@@ -458,6 +474,12 @@ async def main():
         help="ELF to inject",
     )
     parser.add_argument("--pid", type=int, default=0, help="Manual PID override")
+    parser.add_argument(
+        "--elf-loader-port",
+        type=int,
+        default=0,
+        help="Send the ELF to a standalone TCP elfldr instead of PS5Debug load_elf",
+    )
     parser.add_argument("--list", action="store_true", help="List candidates only")
     parser.add_argument(
         "--ftp-ports",
@@ -554,8 +576,14 @@ async def main():
             )
 
     print(f"[elf] {elf_path} ({elf_path.stat().st_size} bytes)")
-    print("[load_elf] injecting...")
 
+    if args.elf_loader_port:
+        if not send_elf_via_loader(args.host, args.elf_loader_port, elf_path):
+            return 5
+        print("[done] ELF sent through standalone elfldr.")
+        return 0
+
+    print("[load_elf] injecting...")
     try:
         status = await ps5.load_elf(target_pid, str(elf_path))
     except Exception as exc:
