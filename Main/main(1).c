@@ -528,6 +528,9 @@ typedef struct {
 #ifndef ENABLE_REMOTE_GAME_DIAG
 #define ENABLE_REMOTE_GAME_DIAG                     0
 #endif
+#ifndef ENABLE_GLOBAL_TROPHY_SCAN
+#define ENABLE_GLOBAL_TROPHY_SCAN                   0
+#endif
 #define REMOTE_GAME_PID_FILE                        "/data/trophy_unlocker_target_pid.txt"
 #ifndef ENABLE_CALLBACK_MONITOR
 #define ENABLE_CALLBACK_MONITOR                     0
@@ -1485,6 +1488,37 @@ probe_trophy_dynlibs_for_pid(int pid, const char *phase)
     }
 
     (void)trophy1;
+}
+
+static void
+run_global_trophy_process_scan(void)
+{
+    int hits = 0;
+
+    logf("V81 global trophy process scan start");
+    notify("trophy_unlocker: V81 scanning all pids");
+
+    for (int pid = 1; pid < 2048; pid++) {
+        uint32_t trophy1 = 0;
+        uint32_t trophy2 = 0;
+        uint32_t uds = 0;
+        int r1 = kernel_dynlib_handle(pid, "libSceNpTrophy.sprx", &trophy1);
+        int r2 = kernel_dynlib_handle(pid, "libSceNpTrophy2.sprx", &trophy2);
+        int ru = kernel_dynlib_handle(pid, "libSceNpUniversalDataSystem.sprx", &uds);
+
+        if ((r1 == 0 && trophy1 != 0) ||
+            (r2 == 0 && trophy2 != 0) ||
+            (ru == 0 && uds != 0)) {
+            hits++;
+            logf("V81 hit pid=%d trophy1=0x%08x trophy2=0x%08x uds=0x%08x",
+                 pid, trophy1, trophy2, uds);
+            log_process_info_for_pid(pid);
+            probe_trophy_dynlibs_for_pid(pid, "global-v81");
+        }
+    }
+
+    logf("V81 global trophy process scan done hits=%d", hits);
+    notify("trophy_unlocker: V81 scan done hits=%d", hits);
 }
 
 static void
@@ -4619,6 +4653,12 @@ main(int argc, char *argv[])
 
     if (ENABLE_REMOTE_GAME_DIAG) {
         run_remote_game_diag();
+        log_drain();
+        return 0;
+    }
+
+    if (ENABLE_GLOBAL_TROPHY_SCAN) {
+        run_global_trophy_process_scan();
         log_drain();
         return 0;
     }
