@@ -188,9 +188,9 @@ function Capture-PayloadTcpLog {
         if ($null -eq $Client) {
             Add-ReportLine "[payload-log] port ${PayloadLogPort} never opened within ${PayloadLogSeconds}s"
             Write-Host "[payload-log] port ${PayloadLogPort} never opened within ${PayloadLogSeconds}s"
-            return
         }
 
+        if ($null -ne $Client) {
         Write-Host "[payload-log] connected on ${PayloadLogPort}"
         Add-ReportLine "[payload-log] connected on ${PayloadLogPort}"
         $Stream = $Client.GetStream()
@@ -224,6 +224,7 @@ function Capture-PayloadTcpLog {
             Write-Host "[payload-log] injection may still be OK; the payload does not always return TCP logs"
         } else {
             Add-ReportLine "[payload-log] bytes received: $CapturedBytes"
+        }
         }
     } catch {
         Add-ReportLine ("[payload-log] unavailable: " + $_.Exception.Message)
