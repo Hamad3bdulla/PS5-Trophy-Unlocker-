@@ -25,6 +25,7 @@ jobs:
           python -m py_compile Script/firmware_profiles.py
           python -m py_compile Script/ps5debug_shellcore_gate_602.py
           python -m py_compile Script/unlock_running_game.py
+          python -m py_compile Script/rpc_getpid_probe.py
           python -m py_compile Main/code_similarity_reporter.py
 
       - name: Run unit tests
