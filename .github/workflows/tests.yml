@@ -1,0 +1,45 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+      - fw-13.60-support
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile Python files
+        run: |
+          python -m py_compile Script/firmware_profiles.py
+          python -m py_compile Script/ps5debug_shellcore_gate_602.py
+          python -m py_compile Script/unlock_running_game.py
+          python -m py_compile Main/code_similarity_reporter.py
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Parse PowerShell launcher
+        shell: pwsh
+        run: |
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path "Script/run_unlocker_core.ps1"),
+            [ref]$null,
+            [ref]$errors
+          )
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }

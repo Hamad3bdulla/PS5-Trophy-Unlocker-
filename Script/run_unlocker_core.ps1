@@ -2,6 +2,7 @@ param(
     [string]$PS5 = "192.168.1.94",
     [int]$DebugPort = 744,
     [int[]]$FtpPorts = @(2121),
+    [string]$Firmware = "auto",
     [ValidateSet("all", "id", "range", "wave", "list")]
     [string]$Mode = "wave",
     [int]$Id = 1,
@@ -78,6 +79,7 @@ function New-ReportHeader {
         ("PS5: " + $PS5),
         ("DebugPort: " + $DebugPort),
         ("FtpPorts: " + ($FtpPorts -join ",")),
+        ("Firmware: " + $Firmware),
         ("Mode: " + $Mode),
         ("Id: " + $Id),
         ("Ids: " + $Ids),
@@ -410,34 +412,31 @@ if ($TargetLine -match 'CUSA\d{5}') {
 Write-Status "[auto] platform=$AutoPlatform target=$TargetLine"
 
 if ($NoPatch) {
-    Write-Status "[auto] FW602 patch skipped: -NoPatch forced"
+    Write-Status "[firmware] ShellCore patch skipped: -NoPatch forced"
 } elseif ($AutoPlatform -eq "ps4") {
-    Write-Status "[auto] FW602 patch skipped: PS4/CUSA game detected"
+    Write-Status "[firmware] ShellCore patch skipped: PS4/CUSA game detected"
 } elseif ($AutoPlatform -eq "ps5") {
-    Write-Status "[fw602] PS5/PPSA detected: patch RAM only if the FW 6.02 signature is valid"
-    $PatchExtraArgs = @()
+    Write-Status "[firmware] PS5/PPSA detected, requested firmware profile=$Firmware"
+    $PatchExtraArgs = @("--firmware", $Firmware)
     if ($DebugReport) { $PatchExtraArgs += "--debug-diff" }
-    $PatchResult = Invoke-LoggedCommand -Label "fw602 patch auto" -AllowNonZero -Command {
-        & $Python @PythonArgs $PatchScript $PS5 --port $DebugPort --mode patch --force @PatchExtraArgs
-    }
-    if ($PatchResult.Code -ne 0) {
-        Write-Status "[fw602] automatic patch failed; retrying pid=56 with detailed debug"
-        $RetryPatchResult = Invoke-LoggedCommand -Label "fw602 patch pid=56 debug-diff" -AllowNonZero -Command {
-            & $Python @PythonArgs $PatchScript $PS5 --port $DebugPort --mode patch --force --pid 56 --debug-diff
-        }
-        if ($RetryPatchResult.Code -ne 0) {
-            Write-Status "[fw602] WARN: patch not applied."
-            Write-Status "[fw602] Probable cause: different firmware signature, unsupported offsets, or ShellCore not found."
-            Write-Status "[fw602] Continuing anyway: configuration + ELF will be sent."
-            Write-Status "[fw602] If nothing appears, rerun with PC debug report to read the details."
 
-            Add-ReportLine ""
-            Add-ReportLine "---- fw602 patch skipped, continue injection ----"
-            Add-ReportLine ("AutoPatchExitCode: " + $PatchResult.Code)
-            Add-ReportLine ("RetryPatchExitCode: " + $RetryPatchResult.Code)
-            Add-ReportLine "PatchStatus: not applied"
-            Add-ReportLine "Action: injection continues without FW602 patch"
-        }
+    $PatchResult = Invoke-LoggedCommand -Label "firmware profile check/patch" -AllowNonZero -Command {
+        & $Python @PythonArgs $PatchScript $PS5 --port $DebugPort --mode patch @PatchExtraArgs
+    }
+
+    if ($PatchResult.Code -eq 0) {
+        Write-Status "[firmware] profile accepted. Safe profile may intentionally skip ShellCore writes."
+    } else {
+        Write-Status "[firmware] WARN: no verified ShellCore patch was applied for profile '$Firmware'."
+        Write-Status "[firmware] Continuing with Trophy2/UDS payload path only."
+        Write-Status "[firmware] Use -DebugReport to collect payload diagnostics before adding new offsets."
+
+        Add-ReportLine ""
+        Add-ReportLine "---- firmware patch skipped, continue Trophy2/UDS injection ----"
+        Add-ReportLine ("Firmware: " + $Firmware)
+        Add-ReportLine ("ProfileExitCode: " + $PatchResult.Code)
+        Add-ReportLine "PatchStatus: not applied"
+        Add-ReportLine "Action: continue Trophy2/UDS payload path"
     }
 } else {
     Write-Status "[auto] STOP: no CUSA/PPSA game detected."
@@ -447,7 +446,7 @@ if ($NoPatch) {
 
 if ($Mode -eq "list") {
     if ([string]::IsNullOrWhiteSpace($Ids)) {
-        throw "Mode list: ajoute -Ids `"5,8,21`""
+        throw "List mode: add -Ids `"5,8,21`""
     }
 
     $ParsedIds = @()
