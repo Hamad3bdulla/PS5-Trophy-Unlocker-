@@ -525,6 +525,10 @@ typedef struct {
 #ifndef ENABLE_REMOTE_VSH_SYMBOL_PROBE
 #define ENABLE_REMOTE_VSH_SYMBOL_PROBE              0
 #endif
+#ifndef ENABLE_REMOTE_GAME_DIAG
+#define ENABLE_REMOTE_GAME_DIAG                     0
+#endif
+#define REMOTE_GAME_PID_FILE                        "/data/trophy_unlocker_target_pid.txt"
 #ifndef ENABLE_CALLBACK_MONITOR
 #define ENABLE_CALLBACK_MONITOR                     0
 #endif
@@ -4532,6 +4536,55 @@ should_use_ps4_trophy1_mode(void)
     return 0;
 }
 
+
+static int
+read_remote_game_pid(void)
+{
+    char buf[32];
+    int fd;
+    ssize_t n;
+    int pid = 0;
+
+    memset(buf, 0, sizeof buf);
+    fd = open(REMOTE_GAME_PID_FILE, O_RDONLY, 0);
+    if (fd < 0) {
+        logf("V80 remote pid file open(%s) -> %d", REMOTE_GAME_PID_FILE, fd);
+        return 0;
+    }
+
+    n = read(fd, buf, sizeof(buf) - 1);
+    close(fd);
+    if (n <= 0) {
+        logf("V80 remote pid file read -> %d", (int)n);
+        return 0;
+    }
+
+    pid = atoi(buf);
+    logf("V80 remote target pid file -> %d", pid);
+    return pid > 0 ? pid : 0;
+}
+
+static void
+run_remote_game_diag(void)
+{
+    int target_pid = read_remote_game_pid();
+
+    if (target_pid <= 0) {
+        notify("trophy_unlocker: V80 no remote game pid");
+        return;
+    }
+
+    notify("trophy_unlocker: V80 remote game diag pid=%d", target_pid);
+    log_process_info_for_pid(target_pid);
+    probe_trophy_dynlibs_for_pid(target_pid, "remote-game-v80");
+
+    /* ShellCore owns a number of system-facing trophy/UDS modules on PS5. */
+    probe_vsh_system_symbols_for_pid(57);
+
+    logf("V80 remote game diag done pid=%d", target_pid);
+    notify("trophy_unlocker: V80 remote game diag done pid=%d", target_pid);
+}
+
 /* ---------------------------------------------------------------- main */
 
 int
@@ -4563,6 +4616,12 @@ main(int argc, char *argv[])
     logf("BUILD %s pid=%d", BUILD_TAG, getpid());
     notify("trophy_unlocker: %s pid=%d", BUILD_TAG, getpid());
     probe_app0_trophy_package_files();
+
+    if (ENABLE_REMOTE_GAME_DIAG) {
+        run_remote_game_diag();
+        log_drain();
+        return 0;
+    }
 
     logf("DEBUG V26: main entered argc=%d arg1=%s",
          argc, argc >= 2 ? argv[1] : "<none>");
