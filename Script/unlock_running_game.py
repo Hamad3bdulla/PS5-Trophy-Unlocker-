@@ -244,7 +244,7 @@ def parse_trptitle_count(blob):
 def find_npcomm_and_ps4_sigs_over_ftp(host, ports, row):
     candidates = title_candidates(row)
     if not candidates:
-        print("[npcomm] aucun title id dans le process")
+        print("[npcomm] no title ID in the process")
         return "", []
 
     suffixes = (
@@ -288,10 +288,10 @@ def find_npcomm_and_ps4_sigs_over_ftp(host, ports, row):
                         labels = ", ".join(name for name, _ in sigs)
                         print(f"[npsig] candidats={len(sigs)} {labels}")
                     else:
-                        print("[npsig] aucun candidat signature PS4 trouve")
+                        print("[npsig] no PS4 signature candidate found")
                     return npcomm, sigs
 
-    print(f"[npcomm] introuvable via FTP pour {', '.join(candidates)}")
+    print(f"[npcomm] not found via FTP for {', '.join(candidates)}")
     return "", []
 
 
@@ -305,7 +305,7 @@ def find_trptitle_count_over_ftp(host, ports, npcomm):
         try:
             homes = ftp_list_names(host, port, "/user/home/")
         except Exception as exc:
-            print(f"[count] liste /user/home ftp:{port} echoue: {type(exc).__name__}: {exc}")
+            print(f"[count] listing /user/home ftp:{port} failed: {type(exc).__name__}: {exc}")
             continue
 
         for home in homes:
@@ -322,7 +322,7 @@ def find_trptitle_count_over_ftp(host, ports, npcomm):
                 print(f"[count] {npcomm} via ftp:{port}{path} -> {count}")
                 return count
 
-    print(f"[count] TRPTITLE introuvable via FTP pour {npcomm}")
+    print(f"[count] TRPTITLE not found via FTP for {npcomm}")
     return 0
 
 
@@ -342,7 +342,7 @@ def prepare_npcomm_override(host, ports, row, remote_name, count_name, npsig_nam
             npcomm_uploaded = True
             break
         except Exception as exc:
-            print(f"[npcomm] upload ftp:{port} echoue: {type(exc).__name__}: {exc}")
+            print(f"[npcomm] upload ftp:{port} failed: {type(exc).__name__}: {exc}")
 
     if not npcomm_uploaded:
         return
@@ -355,7 +355,7 @@ def prepare_npcomm_override(host, ports, row, remote_name, count_name, npsig_nam
                 print(f"[npsig] /data/{npsig_name} <- {len(payload)} bytes ({len(payload) // 160} candidat(s)) via ftp:{port}")
                 break
             except Exception as exc:
-                print(f"[npsig] upload ftp:{port} echoue: {type(exc).__name__}: {exc}")
+                print(f"[npsig] upload ftp:{port} failed: {type(exc).__name__}: {exc}")
 
     count = find_trptitle_count_over_ftp(host, ports, npcomm)
     if not count:
@@ -367,7 +367,7 @@ def prepare_npcomm_override(host, ports, row, remote_name, count_name, npsig_nam
             print(f"[count] /data/{count_name} <- {count} via ftp:{port}")
             return
         except Exception as exc:
-            print(f"[count] upload ftp:{port} echoue: {type(exc).__name__}: {exc}")
+            print(f"[count] upload ftp:{port} failed: {type(exc).__name__}: {exc}")
 
 
 def prepare_platform_override(host, ports, row, platform_name):
@@ -376,7 +376,7 @@ def prepare_platform_override(host, ports, row, platform_name):
 
     platform = detect_platform(row)
     if not platform:
-        print("[platform] type PS4/PS5 introuvable depuis ps5debug")
+        print("[platform] PS4/PS5 type not found from ps5debug")
         return
 
     for port in ports:
@@ -385,7 +385,7 @@ def prepare_platform_override(host, ports, row, platform_name):
             print(f"[platform] /data/{platform_name} <- {platform} via ftp:{port}")
             return
         except Exception as exc:
-            print(f"[platform] upload ftp:{port} echoue: {type(exc).__name__}: {exc}")
+            print(f"[platform] upload ftp:{port} failed: {type(exc).__name__}: {exc}")
 
 
 async def collect_process_rows(ps5):
@@ -489,7 +489,7 @@ async def main():
 
     elf_path = Path(args.elf)
     if not elf_path.exists():
-        print(f"[error] ELF introuvable: {elf_path}")
+        print(f"[error] ELF not found: {elf_path}")
         return 2
 
     ps5 = PS4Debug(args.host, args.port)
@@ -528,7 +528,7 @@ async def main():
     else:
         strong = [row for row in ranked if score_game_process(row) >= 100]
         if not strong:
-            print("[error] Aucun jeu eboot.bin fiable. Lance le jeu, active debug, puis relance.")
+            print("[error] No reliable eboot.bin game process found. Launch the game, enable debug, then rerun.")
             return 4
         target_row = strong[0]
         target_pid = target_row[0]
@@ -554,16 +554,16 @@ async def main():
             )
 
     print(f"[elf] {elf_path} ({elf_path.stat().st_size} bytes)")
-    print("[load_elf] injection...")
+    print("[load_elf] injecting...")
 
     try:
         status = await ps5.load_elf(target_pid, str(elf_path))
     except Exception as exc:
-        print(f"[load_elf] erreur {type(exc).__name__}: {exc}")
+        print(f"[load_elf] error {type(exc).__name__}: {exc}")
         return 5
 
     print(f"[load_elf] status={status!r}")
-    print("[done] ELF envoye au process du jeu.")
+    print("[done] ELF sent to the game process.")
     return 0
 
 
