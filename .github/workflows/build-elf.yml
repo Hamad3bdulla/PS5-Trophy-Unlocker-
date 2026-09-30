@@ -40,6 +40,7 @@ jobs:
           file "dist/PS5 Unlocker DEBUG.elf"
           file "dist/FW13.60-Probe.elf"
           file "dist/FW13.60-Remote-Trophy-Probe.elf"
+          file "dist/FW13.60-Global-Trophy-Scan.elf"
           ls -lh dist/
 
       - name: Upload build artifact
@@ -51,4 +52,5 @@ jobs:
             dist/PS5-Unlocker-DEBUG.elf
             dist/FW13.60-Probe.elf
             dist/FW13.60-Remote-Trophy-Probe.elf
+            dist/FW13.60-Global-Trophy-Scan.elf
           if-no-files-found: error
