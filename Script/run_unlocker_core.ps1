@@ -12,7 +12,8 @@ param(
     [int]$Wave = 5,
     [int]$DelaySeconds = 35,
     [int]$ListDelaySeconds = 10,
-    [int]$PayloadLogPort = 9021,
+    [int]$ElfLoaderPort = 9021,
+    [int]$PayloadLogPort = 9022,
     [int]$PayloadLogSeconds = 20,
     [string]$Elf = "",
     [switch]$NoPatch,
@@ -412,8 +413,24 @@ function Invoke-Unlocker {
     param([string]$Label)
 
     Write-Status "[inject] $Label"
+    $HelperArgs = @(
+        $Helper, $PS5,
+        "--port", $DebugPort,
+        "--elf", $Elf,
+        "--ftp-ports", ($FtpPorts -join ","),
+        "--npcomm-name", "trophy_unlocker_npcomm.txt",
+        "--count-name", "trophy_unlocker_count.txt",
+        "--npsig-name", "trophy_unlocker_npsig.bin",
+        "--platform-name", "trophy_unlocker_platform.txt"
+    )
+
+    if ($AutoPlatform -eq "ps5" -and $Firmware.Trim() -eq "13.60") {
+        Write-Status "[inject] FW 13.60: using standalone elfldr on port $ElfLoaderPort"
+        $HelperArgs += @("--elf-loader-port", $ElfLoaderPort)
+    }
+
     $InjectResult = Invoke-LoggedCommand -Label "inject $Label" -AllowNonZero -Command {
-        & $Python @PythonArgs $Helper $PS5 --port $DebugPort --elf $Elf --ftp-ports ($FtpPorts -join ",") --npcomm-name trophy_unlocker_npcomm.txt --count-name trophy_unlocker_count.txt --npsig-name trophy_unlocker_npsig.bin --platform-name trophy_unlocker_platform.txt
+        & $Python @PythonArgs @HelperArgs
     }
     Capture-PayloadTcpLog -Label $Label
     if ($InjectResult.Code -ne 0) {
