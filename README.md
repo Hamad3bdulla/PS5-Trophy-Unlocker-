@@ -1,315 +1,318 @@
-# Trophy Unlocker PS5 ELF
-Tool PC pour envoyer une payload Trophy Unlocker sur une console PS5 compatible avec un jeu déjà lancé.
+# PS5 Trophy Unlocker ELF
 
-Le choix des trophées se fait depuis le PC avec le lanceur. Le projet garde l'esprit du payload de base, mais il a été fortement modifié et étendu avec un lanceur PC, plusieurs modes d'envoi, des rapports debug, une détection PS4/PS5...
+PC-side tool for sending a Trophy Unlocker payload to a compatible PS5 while a game is already running.
 
-## Vidéo de démonstration
+Trophy selection is controlled from the PC launcher. The project keeps the spirit of the original payload, but has been heavily modified and extended with a PC launcher, multiple send modes, debug reports, and PS4/PS5 detection.
 
-[![Voir la démonstration](https://img.youtube.com/vi/amzFqTmyxbs/maxresdefault.jpg)](https://www.youtube.com/watch?v=amzFqTmyxbs)
+## Demo video
 
-> Projet expérimental destine aux "développeurs/homebrew". Utilisation à vos risques.  Tout les scripts et main.c sont present ici     
-  Fonctionnelle sur "FW 6.02" / Ceci n'est pas un Fork 
+[![Watch the demo](https://img.youtube.com/vi/amzFqTmyxbs/maxresdefault.jpg)](https://www.youtube.com/watch?v=amzFqTmyxbs)
 
-## Base et modifications
+> Experimental project intended for developers and homebrew users. Use at your own risk. All scripts and the C source are included here.
+>
+> Confirmed working on FW 6.02. This is not a fork.
 
-Ce projet est basé sur seulement main.c que j'ai recuperer de SonicISO sur X , tout le reste c'est du reverse en live avec ma console 6.02 le debug activer...et sdk 10 pour des infos 
+## Background and modifications
 
-La base du main d'origine a été fortement modifiée et des ajouts et script on etait rajouter notamment pour ajouter :
+This project is based only on the original `main.c` obtained from SonicISO on X. Everything else was reverse-engineered live on a PS5 running firmware 6.02 with debugging enabled, with SDK 10 also used as an information reference.
 
-- un lanceur PC en `.bat` et `.ps1` ;
-- des modes `all`, `id`, `wave`, `range`, `list` ;
-- un mode debug avec rapport côté PC ;
-- des logs TCP sur `9022` ;
-- la gestion des fichiers de configuration temporaires ;
-- la détection PS4 / PS5 ;
-- des tests Trophy1 / Trophy2 / UDS ;
-- des vérifications et messages d'erreur plus détaillés.
+The original source has been heavily modified and extended to add:
 
-## Fichiers importants
+- a PC launcher in `.bat` and `.ps1`;
+- `all`, `id`, `wave`, `range`, and `list` modes;
+- a debug mode with PC-side reports;
+- TCP logging on port `9022`;
+- temporary configuration-file handling;
+- PS4 / PS5 detection;
+- Trophy1 / Trophy2 / UDS tests;
+- more detailed validation and error reporting.
+
+## Important files
 
 ```text
-PS5 Unlocker.elf              Payload normal envoyée dans le process du jeu
-PS5 Unlocker DEBUG.elf        Payload debug séparée avec logs TCP
-LANCER_UNLOCKER.bat           Lanceur simple en double-clic
-LANCER_UNLOCKER.ps1           Menu PowerShell interactif
+PS5 Unlocker.elf              Normal payload injected into the game process
+PS5 Unlocker DEBUG.elf        Separate debug payload with TCP logging
+LANCER_UNLOCKER.bat           Simple double-click launcher
+LANCER_UNLOCKER.ps1           Interactive PowerShell menu
 INSTALLER_PYTHON_DEPENDANCES.bat
-_support/                     Scripts internes, Python portable et dépendances
-debug_logs/                   Rapports debug créés sur le PC
+_support/                     Internal scripts, portable Python, and dependencies
+debug_logs/                   Debug reports created on the PC
 ```
 
-## Prérequis console
+## Console requirements
 
-Avant de lancer le tool :
+Before running the tool:
 
-- La console doit être allumée.
-- Le jeu doit déjà être lancé.
-- Le debug doit être actif sur le port `744`.
-- Le FTP doit être actif sur le port `2121`.
-- Le PC doit pouvoir joindre l'adresse IP de la console.
-- Le payload loader doit être prêt côté console.
+- The console must be powered on.
+- A game must already be running.
+- PS5Debug must be active on port `744`.
+- FTP must be active on port `2121`.
+- The PC must be able to reach the console IP address.
+- The payload loader must be ready on the console.
 
-Ports utilisés :
+Ports used:
 
 ```text
-744     Debug PS5
+744     PS5Debug
 2121    FTP
-9021    Envoi payload / loader selon le mode utilisé
-9022    Logs payload debug
+9021    Payload send / loader, depending on the selected mode
+9022    Debug payload logs
 ```
 
-Note : dans le lanceur PC, le port `9021` sert surtout à capturer ou gérer le retour payload quand tu lances `Debug rapport PC` / `-DebugReport`. En mode normal, les logs payload passent surtout par le mode debug et le port `9022`.
+Note: in the PC launcher, port `9021` is mainly used to capture or manage payload return traffic when running `Debug report PC` / `-DebugReport`. In normal mode, payload logs are mainly exposed by the debug payload on port `9022`.
 
-Configuration utilisée pendant les tests :
+Configuration used during testing:
 
 ```text
-Console : PS5
-Firmware testé : 6.02
-PC : Windows 11 / Windows 10 VM
-Debug utilisé : PS5 Debug 1.05 / kstuff 1.6.7
+Console: PS5
+Tested firmware: 6.02
+PC: Windows 11 / Windows 10 VM
+Debug: PS5 Debug 1.05 / kstuff 1.6.7
 ```
 
-## Python / dépendances
+## Python / dependencies
 
-Il y a 2 méthodes.
+There are two supported methods.
 
-### Méthode 1 : portable, recommandée
+### Method 1: portable, recommended
 
-Dans le zip :
+The package includes:
 
 ```text
 _support\python
 ```
 
-Python portable est déjà inclus dans le pack. Tu peux lancer directement le tool sans installer Python sur le PC.
+A portable Python runtime is already included, so the tool can be launched without installing Python system-wide.
 
-Double-clique simplement :
+Simply double-click:
 
 ```text
 LANCER_UNLOCKER.bat
 ```
 
-### Méthode 2 : installer / réparer les dépendances
+### Method 2: install or repair dependencies
 
-Double-clique :
+Double-click:
 
 ```text
 INSTALLER_PYTHON_DEPENDANCES.bat
 ```
 
-Ou lance en PowerShell depuis le dossier du tool :
+Or run this from PowerShell in the tool directory:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\install_dependencies_core.ps1"
 ```
 
-Une fois les dépendances prêtes, utilise le lanceur.
+Once dependencies are ready, use the launcher.
 
-## Lancer le menu
+## Launching the menu
 
-Double-clique :
+Double-click:
 
 ```text
 LANCER_UNLOCKER.bat
 ```
 
-Ou lance en PowerShell depuis le dossier :
+Or run:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\LANCER_UNLOCKER.ps1"
 ```
 
-Le menu demande ensuite :
+The menu then asks for:
 
-1. l'IP de la console ;
-2. le mode à envoyer ;
-3. l'ID, la plage ou la liste selon le mode choisi.
+1. the console IP address;
+2. the send mode;
+3. an ID, range, or list depending on the selected mode.
 
-## Modes disponibles
+## Available modes
 
-### 1. Tout unlock
+### 1. Unlock all
 
-Envoie tous les trophées détectés.
+Sends every detected trophy.
 
-Commande équivalente :
+Equivalent command:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.94 -Mode all
 ```
 
-### 2. Un trophée précis
+### 2. Unlock one trophy
 
-Exemple : envoyer l'ID `8`.
+Example: unlock trophy ID `8`.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.94 -Mode id -Id 8
 ```
 
-### 3. Vague rapide
+### 3. Quick wave
 
-Exemple : envoyer 10 trophées, IDs `1` à `10`.
+Example: unlock 10 trophies, IDs `1` through `10`.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.94 -Mode wave -Start 1 -Wave 10
 ```
 
-Autre exemple : `-Start 5 -Wave 5` envoie `5` à `9`.
+Another example: `-Start 5 -Wave 5` targets IDs `5` through `9`.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.94 -Mode wave -Start 5 -Wave 5
 ```
 
-### 4. Plage précise
+### 4. Exact range
 
-Exemple : envoyer `5` à `8`.
+Example: unlock IDs `5` through `8`.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.XX -Mode range -Range 5-8
 ```
 
-### 5. Liste d'IDs
+### 5. ID list
 
-Exemple : envoyer `5`, `8` et `21`.
+Example: unlock IDs `5`, `8`, and `21`.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.XX -Mode list -Ids "5,8,21"
 ```
 
-### 6. Debug rapport PC
+### 6. PC debug report
 
-Le mode debug accepte une plage de 10 trophées maximum.
+Debug mode accepts a range of up to 10 trophies.
 
-Tu peux taper par exemple :
+Examples:
 
 ```text
-5       -> 1 à 5
-6 9     -> 6 à 9
-6-9     -> 6 à 9
-6 a 9   -> 6 à 9
+5       -> 1 to 5
+6 9     -> 6 to 9
+6-9     -> 6 to 9
+6 a 9   -> 6 to 9
 ```
 
-Le rapport est créé sur le PC dans :
+The report is written to:
 
 ```text
 debug_logs/
 ```
 
-Commande équivalente :
+Equivalent command:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.XX -DebugReport -Elf "PS5 Unlocker DEBUG.elf" -PayloadLogPort 9022 -Mode wave -Start 1 -Wave 5
 ```
 
-Le rapport sert à vérifier :
+The report helps verify:
 
-- la détection du jeu lancé ;
-- la plateforme détectée PS4/PS5 ;
-- le patch PS5 FW602 appliqué ou non ;
-- la configuration envoyée ;
-- l'injection ELF ;
-- les logs TCP du payload ;
-- l'erreur exacte si une étape bloque.
+- detection of the running game;
+- detected platform, PS4 or PS5;
+- whether the PS5 FW 6.02 patch was applied;
+- the configuration that was sent;
+- ELF injection;
+- payload TCP logs;
+- the exact error when a step fails.
 
-## Commandes utiles
+## Useful commands
 
-Toutes les commandes suivantes sont à lancer depuis le dossier du tool.
+All commands below should be run from the tool directory.
 
-### Installer / réparer les dépendances
+### Install or repair dependencies
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\install_dependencies_core.ps1"
 ```
 
-### Lancer le menu PowerShell
+### Launch the PowerShell menu
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\LANCER_UNLOCKER.ps1"
 ```
 
-### Tout unlock
+### Unlock all
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.94 -Mode all
 ```
 
-### Un seul trophée
+### Unlock one trophy
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.94 -Mode id -Id 8
 ```
 
-### 10 trophées, IDs 1 à 10
+### Unlock 10 trophies, IDs 1 through 10
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.94 -Mode wave -Start 1 -Wave 10
 ```
 
-### Vague depuis ID 5, longueur 5
+### Wave starting at ID 5, length 5
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.94 -Mode wave -Start 5 -Wave 5
 ```
 
-### Plage précise 5 à 8
+### Exact range 5 through 8
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.94 -Mode range -Range 5-8
 ```
 
-### Liste précise
+### Exact list
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.94 -Mode list -Ids "5,8,21"
 ```
 
-### Vrai debug ELF 9022, exemple IDs 1 à 5
+### Debug ELF on port 9022, example IDs 1 through 5
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.94 -DebugReport -Elf "PS5 Unlocker DEBUG.elf" -PayloadLogPort 9022 -Mode wave -Start 1 -Wave 5
 ```
-## Fonctionnement général
 
-Le fonctionnement est le suivant :
+## How it works
 
-1. Le jeu est lancé sur la console.
-2. Le PC prépare une configuration selon le mode choisi.
-3. Le lanceur envoie la payload ELF vers la console.
-4. La payload s'exécute dans le process du jeu.
-5. Elle détecte la plateforme et le contexte disponible.
-6. Elle tente d'utiliser la branche adaptée : PS4/Trophy1 ou PS5/Trophy2/UDS selon les cas.
-7. En mode debug, les logs sont récupérés sur le PC et un rapport est écrit dans `debug_logs/`.
+The general flow is:
 
-## Comportement PS4 / PS5
+1. A game is launched on the console.
+2. The PC prepares a configuration for the selected mode.
+3. The launcher sends the ELF payload to the console.
+4. The payload executes inside the game process.
+5. It detects the platform and the available trophy context.
+6. It attempts the appropriate route: PS4/Trophy1 or PS5/Trophy2/UDS.
+7. In debug mode, logs are collected on the PC and a report is written to `debug_logs/`.
+
+## PS4 / PS5 behavior
 
 ### PS4
 
-- Le script détecte le jeu CUSA lancé.
-- Il tente de récupérer les infos NPWR/NPSIG via FTP si disponibles.
-- Il envoie ensuite le ELF dans le process du jeu.
+- The script detects the running CUSA game.
+- It attempts to retrieve NPWR/NPSIG information over FTP when available.
+- It then injects the ELF into the game process.
 
 ### PS5
 
-- Le script détecte le jeu PPSA lancé.
-- Il tente le patch FW602 seulement si la signature connue correspond.
-- Si la signature est différente, si les offsets ne sont pas supportés, ou si ShellCore est introuvable :
-  - le script affiche un warning ;
-  - le rapport debug explique la raison ;
-  - l'envoi du ELF peut continuer quand même selon le cas.
+- The script detects the running PPSA game.
+- It attempts the FW 6.02 patch only when the known signature matches.
+- If the signature is different, offsets are unsupported, or ShellCore cannot be found:
+  - the script shows a warning;
+  - the debug report explains the reason;
+  - ELF injection may still continue depending on the situation.
 
-## Logs et rapports
+## Logs and reports
 
-Les rapports debug sont créés sur le PC dans :
+Debug reports are created on the PC in:
 
 ```text
 debug_logs/
 ```
 
-La payload debug peut aussi exposer un log TCP sur :
+The debug payload can also expose a TCP log on:
 
 ```text
 9022
 ```
 
-Le code peut également utiliser des fichiers temporaires côté console, selon le mode :
+The code may also use temporary files on the console, depending on the selected mode:
 
 ```text
 /data/trophy_unlocker_log.txt
@@ -321,40 +324,44 @@ Le code peut également utiliser des fichiers temporaires côté console, selon 
 /data/trophy_unlocker_platform.txt
 ```
 
-## Bugs connus
+## Known issues
 
-Ce projet est expérimental.
+This project is experimental.
 
-Il est possible de rencontrer :
+Possible issues include:
 
-- des bugs ;
-- des offsets non supportés ; ( a venir multi fw )
-- des problèmes de détection ;
-- des erreurs d'injection ;
-- des comportements différents selon le jeu lancé...
+- bugs;
+- unsupported offsets, with multi-firmware support planned;
+- detection problems;
+- injection errors;
+- game-specific behavior differences.
 
-## Avertissement
+## Disclaimer
 
-Ce projet est fourni à titre éducatif, expérimental et homebrew 
+This project is provided for educational, experimental, and homebrew purposes.
 
-## Crédits
+## Credits
 
-Base / inspiration principale :
+Main base / inspiration:
 
-- Main.c SonicISO (fourni dans la repo) , et ma curiosite , j'aime apprendre de nouvelles choses , experimenter , j'ai une soif de savoir , c'est ma passion , du coup apres reverse j'ai appris plein de nouvelles choses et fait moi meme un trophy unlocker PS5 pour mon fw fonctionnel , je suis pas un expert sa se voit  , j'aime juste apprendre tout les jours de ma vie 
-- PS5 Debug Sistro / ctn  ✌🏻 thx Goldhen 
-- P55 SDK John Tornblom 🫡
-- SDK 10 pour des infos 
-- Reverse et script et elf pour analyses
+- SonicISO `main.c` included in the repository. The rest of this project grew from hands-on reverse engineering and experimentation on a personal console.
+- PS5 Debug by Sistro / ctn — thanks to the GoldHEN community.
+- P55 SDK by John Tornblom.
+- SDK 10 as an information reference.
+- Reverse engineering, scripts, and ELF analysis.
 
-Modifications importantes :
+Major modifications include:
 
--Extension du code, lanceur PC, les modes de sélection, les rapports debug, la gestion PS4/PS5 ...
+- extended code;
+- PC launcher;
+- trophy-selection modes;
+- debug reports;
+- PS4/PS5 handling.
 
-Merci également aux développeurs et testeurs de la scène PS4/PS5 homebrew qui partagent leurs recherches , qui mon aide dans mon apprentissage .
+Thanks also to the PS4/PS5 homebrew developers and testers who share research and helped make this learning process possible.
 
-Pour plus d'infos de devs  :
+For additional developer references:
 
 https://github.com/ArkSama/PS5-PHU-Trophy-System
-https://git.etawen.dev/soniciso/uds-trophy-unlocker
 
+https://git.etawen.dev/soniciso/uds-trophy-unlocker

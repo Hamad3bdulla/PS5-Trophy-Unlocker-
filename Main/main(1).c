@@ -1,5 +1,5 @@
 /* PS5 trophy unlocker — homebrew payload for jailbroken consoles.
- * Modifier le 12 mai 2026 Niko Bellik base partage par SonicISO
+ * Modified on May 12, 2026 by Niko Bellik, based on code shared by SonicISO
  *
  * Usage:
  *   nc <ps5> 9021 < trophy_unlocker.elf       launches the payload
@@ -738,7 +738,7 @@ monitor_trophy2_unlock_callbacks(int seconds)
     logf("V49 callback monitor done cb_total=%d last_ctx=%d last_id=%d",
          g_trophy2_unlock_callbacks, g_last_trophy2_unlock_context,
          g_last_trophy2_unlock_id);
-    notify("trophy_unlocker: V49 monitor fini cb=%d",
+    notify("trophy_unlocker: V49 monitor finished cb=%d",
            g_trophy2_unlock_callbacks);
 
     return g_trophy2_unlock_callbacks;
@@ -1250,7 +1250,7 @@ ensure_trophy_count(uint32_t num_trophies, const char *phase)
     if (detected == 0)
         detected = detect_user_trptitle_trophy_count();
     if (detected == 0)
-        notify("trophy_unlocker: V70 compteur trophees introuvable");
+        notify("trophy_unlocker: V70 trophy count not found");
 
     logf("V68 ensure count phase=%s input=%u detected=%u",
          phase, num_trophies, detected);
@@ -2061,7 +2061,7 @@ scan_trophy2_service_labels(SceUserServiceUserId user_id,
     }
 
     logf("V27 Trophy2 service label scan failed last=0x%08x", last_rc);
-    notify("trophy_unlocker: V27 aucun label Trophy2 OK");
+    notify("trophy_unlocker: V27 no valid Trophy2 label");
     return last_rc;
 }
 
@@ -2173,7 +2173,7 @@ scan_existing_trophy2_contexts(uint32_t *num_trophies)
 
     logf("V29 Trophy2 scan no context invalid=%d not_registered=%d other=%d",
          invalid_contexts, not_registered, other_errors);
-    notify("trophy_unlocker: V29 aucun contexte Trophy2 OK");
+    notify("trophy_unlocker: V29 no valid Trophy2 context");
     p_Trophy2DestroyHandle(handle);
     return -1;
 }
@@ -2465,7 +2465,7 @@ test_trophy2_candidate_get_info(uint32_t *num_trophies)
 
     if (g_trophy2_heap_result.ctx == 0) {
         logf("V32 Trophy2 candidate test skipped: no ctx candidate");
-        notify("trophy_unlocker: V32 aucun ctx Trophy2 candidat");
+        notify("trophy_unlocker: V32 no candidate Trophy2 context");
         return;
     }
 
@@ -2590,7 +2590,7 @@ scan_uds_service_labels(SceUserServiceUserId user_id,
     }
 
     logf("V27 UDS service label scan failed last=0x%08x", last_rc);
-    notify("trophy_unlocker: V27 aucun label UDS OK");
+    notify("trophy_unlocker: V27 no valid UDS label");
     return last_rc;
 }
 
@@ -2934,7 +2934,7 @@ select_unlock_range(int argc, char *argv[], uint32_t num_trophies, int *lo, int 
     if (sel == NULL || sel[0] == '\0') {
         int max_id = selection_max_id(num_trophies);
         if (max_id < 0) {
-            notify("trophy_unlocker: V68 compteur trophees inconnu");
+            notify("trophy_unlocker: V68 unknown trophy count");
             logf("V68 no arg/file but trophy count is unknown; refusing default all");
             return -1;
         }
@@ -3681,13 +3681,13 @@ run_live_context_unlock_from_file(int argc, char *argv[])
     int hi = DEFAULT_TROPHY_ID;
 
     if (read_live_uds_context_file(&live_ctx, &live_handle) != 0) {
-        notify("trophy_unlocker: V51 ctx fichier absent/invalide");
+        notify("trophy_unlocker: V51 context file missing/invalid");
         return -1;
     }
 
     if (live_ctx == SCE_NP_UNIVERSAL_DATA_SYSTEM_INVALID_CONTEXT ||
         live_handle == SCE_NP_UNIVERSAL_DATA_SYSTEM_INVALID_HANDLE) {
-        notify("trophy_unlocker: V51 ctx/handle invalide");
+        notify("trophy_unlocker: V51 invalid context/handle");
         return -1;
     }
 
@@ -3727,7 +3727,7 @@ try_existing_uds_contexts(int lo, int hi,
 
     logf("V28 scan existing UDS contexts 0x%08x..0x%08x skip=0x%08x ids=%d..%d",
          start, end, (int)created_ctx, lo, hi);
-    notify("trophy_unlocker: V28 scan contextes UDS existants");
+    notify("trophy_unlocker: V28 scanning existing UDS contexts");
 
     for (int ctx = start; ctx <= end; ctx++) {
         if (ctx == (int)created_ctx)
@@ -3764,7 +3764,7 @@ try_existing_uds_contexts(int lo, int hi,
 
     logf("V28 scan existing UDS contexts: no accepted context invalid=%d not_registered=%d invalid_arg=%d other=%d",
          invalid_contexts, not_registered, invalid_args, other_errors);
-    notify("trophy_unlocker: V28 aucun contexte UDS accepte");
+    notify("trophy_unlocker: V28 no UDS context accepted");
 }
 
 static int
@@ -3817,7 +3817,7 @@ find_existing_uds_context_with_probe(int probe_id,
         sceKernelUsleep(10000);
     }
 
-    notify("trophy_unlocker: V60 aucun ctx UDS actif");
+    notify("trophy_unlocker: V60 no active UDS context");
     return -1;
 }
 
@@ -4088,7 +4088,7 @@ resolve_ps4_trophy1_symbols(void)
     if (rc == 0 && kh != 0) {
         trophy_kh = kh;
         trophy_use_kernel_dynlib = 1;
-        notify("trophy_unlocker: V73 Trophy1 deja charge h=0x%08x", kh);
+        notify("trophy_unlocker: V73 Trophy1 already loaded h=0x%08x", kh);
     }
 
     for (int i = 0; !trophy_use_kernel_dynlib && paths[i].path != NULL; i++) {
@@ -4121,7 +4121,7 @@ resolve_ps4_trophy1_symbols(void)
     }
 
     if (trophy_h < 0 && !trophy_use_kernel_dynlib) {
-        notify("trophy_unlocker: V73 libSceNpTrophy introuvable");
+        notify("trophy_unlocker: V73 libSceNpTrophy not found");
         return -1;
     }
 
@@ -4150,7 +4150,7 @@ resolve_ps4_trophy1_symbols(void)
                             "sceUserServiceGetInitialUser",
                             (void **)&p_UserServiceGetInitialUser) != 0 ||
         p_UserServiceGetInitialUser == NULL) {
-        notify("trophy_unlocker: V76 user service introuvable");
+        notify("trophy_unlocker: V76 user service not found");
         return -1;
     }
     logf("V76 dlsym(sceUserServiceGetInitialUser) -> %p",
@@ -4188,7 +4188,7 @@ detect_ps4_npcomm(SceNpCommunicationId *comm_id)
         return 0;
     }
 
-    notify("trophy_unlocker: V73 NPWR PS4 introuvable");
+    notify("trophy_unlocker: V73 PS4 NPWR not found");
     return -1;
 }
 
@@ -4282,12 +4282,12 @@ scan_ps4_trophy1_context(int32_t handle,
     }
 
     if (best_ctx == SCE_NP_TROPHY_INVALID_CONTEXT) {
-        notify("trophy_unlocker: V77 contexte PS4 existant introuvable");
+        notify("trophy_unlocker: V77 existing PS4 context not found");
         return -1;
     }
 
     *ctx_out = best_ctx;
-    notify("trophy_unlocker: V77 contexte PS4=0x%08x trophies=%u",
+    notify("trophy_unlocker: V77 PS4 context=0x%08x trophies=%u",
            best_ctx, details_out->numTrophies);
     return 0;
 }
@@ -4323,7 +4323,7 @@ run_ps4_trophy1_unlock(int argc, char *argv[])
 
     if (argc >= 2 && strncmp(argv[1], "NPWR", 4) == 0) {
         if (parse_npcommid(argv[1], &comm_id) != 0) {
-            notify("trophy_unlocker: V73 NPWR invalide '%s'", argv[1]);
+            notify("trophy_unlocker: V73 invalid NPWR '%s'", argv[1]);
             return 1;
         }
     } else if (detect_ps4_npcomm(&comm_id) != 0) {
@@ -4346,16 +4346,16 @@ run_ps4_trophy1_unlock(int argc, char *argv[])
         created_context = 1;
         notify("trophy_unlocker: V76 CreateContext OK user=%d", user_id);
     } else if ((uint32_t)rc == SCE_NP_TROPHY_ERROR_CONTEXT_ALREADY_EXISTS) {
-        notify("trophy_unlocker: V77 contexte existe, scan...");
+        notify("trophy_unlocker: V77 context already exists, scanning...");
     } else {
-        notify("trophy_unlocker: V76 CreateContext bloque 0x%08x", rc);
+        notify("trophy_unlocker: V76 CreateContext blocked 0x%08x", rc);
         return 2;
     }
 
     rc = p_CreateHandle(&handle);
     logf("V73 CreateHandle -> 0x%08x h=%d", rc, handle);
     if (rc != 0) {
-        notify("trophy_unlocker: V73 CreateHandle bloque 0x%08x", rc);
+        notify("trophy_unlocker: V73 CreateHandle blocked 0x%08x", rc);
         if (created_context)
             p_DestroyContext(ctx);
         return 3;
@@ -4371,7 +4371,7 @@ run_ps4_trophy1_unlock(int argc, char *argv[])
         rc = p_RegisterContext(ctx, handle, 0);
         logf("V73 RegisterContext -> 0x%08x", rc);
         if (rc != 0) {
-            notify("trophy_unlocker: V73 RegisterContext bloque 0x%08x", rc);
+            notify("trophy_unlocker: V73 RegisterContext blocked 0x%08x", rc);
             p_DestroyHandle(handle);
             p_DestroyContext(ctx);
             return 4;
@@ -4425,7 +4425,7 @@ run_ps4_trophy1_unlock(int argc, char *argv[])
     if (created_context)
         p_DestroyContext(ctx);
 
-    notify("trophy_unlocker: V73 PS4 done new=%d deja=%d invalid=%d err=%d",
+    notify("trophy_unlocker: V73 PS4 done new=%d already=%d invalid=%d err=%d",
            unlocked, already, invalid, errors);
     return errors ? 6 : 0;
 }
@@ -4495,12 +4495,12 @@ should_use_ps4_trophy1_mode(void)
     if (read_platform_override(platform, sizeof platform) == 0) {
         if (strncmp(platform, "ps4", 3) == 0 ||
             strncmp(platform, "cusa", 4) == 0) {
-            notify("trophy_unlocker: V78 route forcee PS4");
+            notify("trophy_unlocker: V78 forced PS4 route");
             return 1;
         }
         if (strncmp(platform, "ps5", 3) == 0 ||
             strncmp(platform, "ppsa", 4) == 0) {
-            notify("trophy_unlocker: V78 route forcee PS5");
+            notify("trophy_unlocker: V78 forced PS5 route");
             return 0;
         }
     }
@@ -4528,7 +4528,7 @@ should_use_ps4_trophy1_mode(void)
         return 1;
     }
 
-    notify("trophy_unlocker: V78 route inconnue, essai PS5");
+    notify("trophy_unlocker: V78 unknown route, trying PS5");
     return 0;
 }
 
@@ -4583,7 +4583,7 @@ main(int argc, char *argv[])
     }
 
     if (ENABLE_PS4_TROPHY1_MODE && ENABLE_AUTO_PS4_PS5_MODE)
-        notify("trophy_unlocker: V78 continue branche PS5");
+        notify("trophy_unlocker: V78 continuing PS5 branch");
 
     if (dl_resolve_all() != 0) {
         log_drain();
@@ -4620,7 +4620,7 @@ main(int argc, char *argv[])
         uds_init_done = 1;
         notify("trophy_unlocker: V37 UDS init OK rc=0x%08x", rc);
     } else {
-        notify("trophy_unlocker: V37 UDS init bloque 0x%08x", rc);
+        notify("trophy_unlocker: V37 UDS init blocked 0x%08x", rc);
     }
 
     notify("DEBUG V26: optional Trophy2 probe user=%d ok=%d uds_only=%d",
@@ -4633,7 +4633,7 @@ main(int argc, char *argv[])
             trophy_callback_registered = 1;
     } else {
         logf("V26 Trophy2 RegisterUnlockCallback unavailable");
-        notify("trophy_unlocker: V26 UnlockCallback absent");
+        notify("trophy_unlocker: V26 UnlockCallback unavailable");
     }
 
     if (ENABLE_CALLBACK_MONITOR) {
@@ -4699,7 +4699,7 @@ main(int argc, char *argv[])
             pump_np_callbacks("after-trophy-register", 6);
             if (rc < 0) {
                 logf("V23 Trophy2 RegisterContext failed; continuing with UDS-only unlock path");
-                notify("trophy_unlocker: Trophy2 bloque 0x%08x, test UDS", rc);
+                notify("trophy_unlocker: Trophy2 blocked 0x%08x, trying UDS", rc);
                 destroy_trophy2_pair(&trophy_ctx, &trophy_handle,
                                      "label0-register-failed");
                 (void)scan_trophy2_service_labels(user_id, &trophy_ctx,
@@ -4734,7 +4734,7 @@ skip_trophy_register_probe:
 
     if (!ENABLE_UDS_CONTEXT_SCAN && !ENABLE_REGISTER_PROBES) {
         logf("V32 diagnostic done: no UDS post/register attempted");
-        notify("trophy_unlocker: V32 diagnostic seul, pas d'UDS");
+        notify("trophy_unlocker: V32 diagnostic only, no UDS");
         goto cleanup;
     }
 
@@ -4768,7 +4768,7 @@ skip_trophy_register_probe:
     }
 
     if (ENABLE_UDS_CONTEXT_SCAN && (hi - lo) <= 4) {
-        notify("trophy_unlocker: V28 test contexte UDS deja existant");
+        notify("trophy_unlocker: V28 testing existing UDS context");
         try_existing_uds_contexts(lo, hi,
                                   SCE_NP_UNIVERSAL_DATA_SYSTEM_INVALID_CONTEXT,
                                   &posted);
@@ -4791,7 +4791,7 @@ skip_trophy_register_probe:
     if (!ENABLE_REGISTER_PROBES) {
         logf("V34 existing UDS scan only: skip Create/RegisterContext posted=%d",
              posted);
-        notify("trophy_unlocker: V34 scan UDS fini posted=%d", posted);
+        notify("trophy_unlocker: V34 UDS scan finished posted=%d", posted);
         goto cleanup;
     }
 
@@ -4815,7 +4815,7 @@ skip_trophy_register_probe:
     pump_np_callbacks("after-uds-register", 6);
     if (rc < 0) {
         logf("V24 UDS RegisterContext failed; testing PostEvent anyway");
-        notify("trophy_unlocker: UDS label 0 bloque 0x%08x", rc);
+        notify("trophy_unlocker: UDS label 0 blocked 0x%08x", rc);
         destroy_uds_pair(&uds_ctx, &uds_reg_handle, "label0-register-failed");
         if (scan_uds_service_labels(user_id, &uds_ctx, &uds_reg_handle,
                                     &uds_service_label) == 0) {
@@ -4823,14 +4823,14 @@ skip_trophy_register_probe:
             uds_register_rc = 0;
         } else {
             if (ENABLE_UDS_CONTEXT_SCAN && (hi - lo) <= 4) {
-                notify("trophy_unlocker: V28 re-scan apres labels refuses");
+                notify("trophy_unlocker: V28 rescanning after rejected labels");
                 try_existing_uds_contexts(lo, hi,
                                           SCE_NP_UNIVERSAL_DATA_SYSTEM_INVALID_CONTEXT,
                                           &posted);
                 if (posted > 0)
                     goto cleanup;
             }
-            notify("trophy_unlocker: V27 pas de contexte UDS enregistre");
+            notify("trophy_unlocker: V27 no registered UDS context");
             errors++;
             goto cleanup;
         }
