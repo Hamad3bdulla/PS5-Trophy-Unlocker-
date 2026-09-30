@@ -31,7 +31,7 @@ jobs:
           cd /tmp/ps5-payload-sdk-src
           sudo make DESTDIR=/opt/ps5-payload-sdk install
 
-      - name: Build debug and probe ELFs
+      - name: Build diagnostic ELFs
         env:
           PS5_PAYLOAD_SDK: /opt/ps5-payload-sdk
         run: |
@@ -39,9 +39,10 @@ jobs:
           make all
           file "dist/PS5 Unlocker DEBUG.elf"
           file "dist/FW13.60-Probe.elf"
+          file "dist/FW13.60-Remote-Trophy-Probe.elf"
           ls -lh dist/
 
-      - name: Upload debug ELF artifact
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: PS5-Unlocker-FW13.60-debug
@@ -49,4 +50,5 @@ jobs:
             dist/PS5 Unlocker DEBUG.elf
             dist/PS5-Unlocker-DEBUG.elf
             dist/FW13.60-Probe.elf
+            dist/FW13.60-Remote-Trophy-Probe.elf
           if-no-files-found: error
