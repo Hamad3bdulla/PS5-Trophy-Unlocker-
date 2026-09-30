@@ -44,7 +44,7 @@ class MatchBlock:
 
 
 def read_text_file(path: Path) -> str:
-    """Lit un fichier source avec plusieurs encodages possibles."""
+    """Read a source file using several possible encodings."""
     raw = path.read_bytes()
     for enc in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
         try:
@@ -59,7 +59,7 @@ def split_lines_keep(text: str) -> List[str]:
 
 
 def strip_c_comments(text: str) -> str:
-    """Supprime commentaires C/C++ sans être parfait, mais suffisant pour score normalisé."""
+    """Remove C/C++ comments. It is not perfect, but is sufficient for a normalized score."""
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
     text = re.sub(r"//.*", "", text)
     return text
@@ -116,12 +116,12 @@ def find_normalized_blocks(a_lines: Sequence[str], b_lines: Sequence[str], min_b
     a_norm = [normalize_line(x) for x in a_lines]
     b_norm = [normalize_line(x) for x in b_lines]
 
-    # On garde les indices mais on compare les lignes normalisées.
+    # Keep the indices, but compare normalized lines.
     matcher = difflib.SequenceMatcher(None, a_norm, b_norm, autojunk=False)
     blocks = []
     for block in matcher.get_matching_blocks():
         if block.size >= min_block:
-            # Ignore les blocs qui ne sont que vides/commentaires après normalisation.
+            # Ignore blocks that contain only blank/comment lines after normalization.
             segment = a_norm[block.a:block.a + block.size]
             if any(x.strip() for x in segment):
                 blocks.append(MatchBlock(block.a + 1, block.b + 1, block.size, "normalized"))
@@ -129,8 +129,8 @@ def find_normalized_blocks(a_lines: Sequence[str], b_lines: Sequence[str], min_b
 
 
 def brace_delta(line: str) -> int:
-    """Compte approximativement les accolades hors chaînes."""
-    # Simplification volontaire: suffisant pour un rapport local.
+    """Approximately count braces outside strings."""
+    # Intentional simplification: sufficient for a local report.
     line = re.sub(r'"(?:\\.|[^"\\])*"', '""', line)
     line = re.sub(r"'(?:\\.|[^'\\])*'", "''", line)
     return line.count("{") - line.count("}")
@@ -139,7 +139,7 @@ def brace_delta(line: str) -> int:
 def extract_c_functions(lines: Sequence[str]) -> Dict[str, FunctionBlock]:
     """
     Extraction heuristique de fonctions C/C++.
-    Ne compile pas le code: détecte les signatures suivies d'une accolade.
+    Does not compile the code: detects signatures followed by an opening brace.
     """
     functions: Dict[str, FunctionBlock] = {}
 
@@ -167,7 +167,7 @@ def extract_c_functions(lines: Sequence[str]) -> Dict[str, FunctionBlock]:
             if not signature_buffer:
                 signature_start = idx
 
-            # Ignore préprocesseur et typedef.
+            # Ignore preprocessor lines and typedefs.
             if stripped.startswith("#") or stripped.startswith("typedef"):
                 signature_buffer = []
                 continue
@@ -175,7 +175,7 @@ def extract_c_functions(lines: Sequence[str]) -> Dict[str, FunctionBlock]:
             signature_buffer.append(line)
             joined = "\n".join(signature_buffer).strip()
 
-            # Évite les buffers immenses.
+            # Avoid huge buffers.
             if len(signature_buffer) > 8 or ";" in joined and "{" not in joined:
                 signature_buffer = []
                 continue
@@ -247,8 +247,8 @@ def extract_c_functions(lines: Sequence[str]) -> Dict[str, FunctionBlock]:
 def classify_line_tags(a_lines: Sequence[str], b_lines: Sequence[str]) -> Tuple[List[str], List[str]]:
     """
     Tags visuels:
-      exact   = ligne incluse dans un bloc exact
-      changed = ligne proche/modifiée
+      exact   = line included in an exact block
+      changed = similar/modified line
       unique  = ligne propre au fichier
     """
     a_tags = ["unique"] * len(a_lines)
@@ -325,7 +325,7 @@ def build_text_report(
 
     out: List[str] = []
     out.append("=" * 78)
-    out.append("RAPPORT TECHNIQUE DE SIMILARITE DE CODE")
+    out.append("TECHNICAL CODE SIMILARITY REPORT")
     out.append("=" * 78)
     out.append("")
     out.append(f"Date analyse       : {time.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -340,44 +340,44 @@ def build_text_report(
     out.append(f"Lignes A non vides                       : {count_nonempty(a_lines)}")
     out.append(f"Lignes B non vides                       : {count_nonempty(b_lines)}")
     out.append("")
-    out.append(f"Lignes exactes A retrouvees dans B, meme ordre : "
+    out.append(f"Exact lines from A found in B, same order      : "
                f"{exact_order}/{len(a_lines)} = {pct(exact_order, len(a_lines)):.2f}%")
-    out.append(f"Lignes exactes A retrouvees dans B, ordre ignore: "
+    out.append(f"Exact lines from A found in B, order ignored   : "
                f"{exact_any_order}/{len(a_lines)} = {pct(exact_any_order, len(a_lines)):.2f}%")
-    out.append(f"Lignes non vides A retrouvees textuellement dans B: "
+    out.append(f"Non-empty lines from A found verbatim in B      : "
                f"{exact_nonempty_any_order}/{len(a_nonempty)} = {pct(exact_nonempty_any_order, len(a_nonempty)):.2f}%")
     out.append(f"Lignes normalisees communes hors commentaires/espaces: "
                f"{norm_any_order}/{len(a_norm_nonempty)} = {pct(norm_any_order, len(a_norm_nonempty)):.2f}%")
     out.append("")
-    out.append(f"Blocs exacts continus >= 3 lignes         : {len(exact_blocks)}")
-    out.append(f"Total lignes dans blocs exacts           : {sum(b.size for b in exact_blocks)}")
-    out.append(f"Blocs normalises continus >= 3 lignes    : {len(normalized_blocks)}")
-    out.append(f"Total lignes dans blocs normalises       : {sum(b.size for b in normalized_blocks)}")
+    out.append(f"Continuous exact blocks >= 3 lines             : {len(exact_blocks)}")
+    out.append(f"Total lines in exact blocks                     : {sum(b.size for b in exact_blocks)}")
+    out.append(f"Continuous normalized blocks >= 3 lines        : {len(normalized_blocks)}")
+    out.append(f"Total lines in normalized blocks                : {sum(b.size for b in normalized_blocks)}")
     out.append("")
-    out.append(f"Fonctions A detectees                    : {len(funcs_a)}")
-    out.append(f"Fonctions B detectees                    : {len(funcs_b)}")
-    out.append(f"Fonctions communes par nom               : {len(common_funcs)}")
-    out.append(f"Fonctions seulement dans A               : {len(only_a_funcs)}")
-    out.append(f"Fonctions seulement dans B               : {len(only_b_funcs)}")
+    out.append(f"Functions detected in A                         : {len(funcs_a)}")
+    out.append(f"Functions detected in B                         : {len(funcs_b)}")
+    out.append(f"Functions shared by name                        : {len(common_funcs)}")
+    out.append(f"Functions only in A                             : {len(only_a_funcs)}")
+    out.append(f"Functions only in B                             : {len(only_b_funcs)}")
     out.append("")
-    out.append("Lecture rapide:")
+    out.append("Quick reading:")
     if len(b_lines) > len(a_lines) * 2 and pct(exact_order, len(a_lines)) >= 50:
         out.append("- Le fichier B semble etre une extension importante du fichier A.")
-        out.append("- Une part significative de A est reprise, mais B contient aussi beaucoup d'ajouts.")
+        out.append("- A significant part of A is reused, but B also contains many additions.")
     elif pct(exact_order, len(a_lines)) >= 80:
         out.append("- Le fichier B est tres proche du fichier A.")
     elif pct(exact_order, len(a_lines)) >= 40:
-        out.append("- Le fichier B partage une base importante avec A.")
+        out.append("- File B shares a substantial base with A.")
     else:
-        out.append("- Les fichiers partagent une base limitee ou tres modifiee.")
-    out.append("- Ce rapport ne remplace pas une verification de licence/attribution.")
+        out.append("- The files share a limited or heavily modified base.")
+    out.append("- This report does not replace a license/attribution review.")
     out.append("")
 
     out.append("-" * 78)
     out.append("2) FONCTIONS COMMUNES ET TAUX DE SIMILARITE")
     out.append("-" * 78)
     if not common_funcs:
-        out.append("Aucune fonction commune detectee par nom.")
+        out.append("No common function detected by name.")
     else:
         for name in common_funcs:
             fa = funcs_a[name]
@@ -400,32 +400,32 @@ def build_text_report(
     out.append("")
 
     out.append("-" * 78)
-    out.append("3) FONCTIONS AJOUTEES DANS B")
+    out.append("3) FUNCTIONS ADDED IN B")
     out.append("-" * 78)
     if only_b_funcs:
         for name in only_b_funcs:
             fb = funcs_b[name]
             out.append(f"- {name}: lignes {fb.start}-{fb.end}, {fb.line_count} lignes")
     else:
-        out.append("Aucune fonction ajoutee detectee dans B.")
+        out.append("No added function detected in B.")
     out.append("")
 
     out.append("-" * 78)
-    out.append("4) FONCTIONS ABSENTES DE B MAIS PRESENTES DANS A")
+    out.append("4) FUNCTIONS MISSING FROM B BUT PRESENT IN A")
     out.append("-" * 78)
     if only_a_funcs:
         for name in only_a_funcs:
             fa = funcs_a[name]
             out.append(f"- {name}: lignes {fa.start}-{fa.end}, {fa.line_count} lignes")
     else:
-        out.append("Aucune fonction de A ne manque dans B par nom.")
+        out.append("No function from A is missing from B by name.")
     out.append("")
 
     out.append("-" * 78)
-    out.append("5) BLOCS EXACTS CONTINUS")
+    out.append("5) CONTINUOUS EXACT BLOCKS")
     out.append("-" * 78)
     if not exact_blocks:
-        out.append("Aucun bloc exact >= 3 lignes.")
+        out.append("No exact block >= 3 lines.")
     else:
         for n, block in enumerate(exact_blocks, start=1):
             out.append(
@@ -436,11 +436,11 @@ def build_text_report(
     out.append("")
 
     out.append("-" * 78)
-    out.append("6) BLOCS NORMALISES CONTINUS")
+    out.append("6) CONTINUOUS NORMALIZED BLOCKS")
     out.append("-" * 78)
-    out.append("Normalise = comparaison en ignorant commentaires et differences d'espaces.")
+    out.append("Normalized = comparison that ignores comments and spacing differences.")
     if not normalized_blocks:
-        out.append("Aucun bloc normalise >= 3 lignes.")
+        out.append("No normalized block >= 3 lines.")
     else:
         for n, block in enumerate(normalized_blocks, start=1):
             out.append(
@@ -451,20 +451,20 @@ def build_text_report(
     out.append("")
 
     out.append("-" * 78)
-    out.append("7) FORMULATION PRUDENTE POUR DOSSIER / README")
+    out.append("7) CAUTIOUS WORDING FOR DOCUMENTATION / README")
     out.append("-" * 78)
     out.append(
         "Formulation conseillee si B derive de A:\n"
-        "\"Ce projet est base sur le travail initial de [auteur/projet]. "
-        "Il conserve certaines parties communes, mais ajoute une extension significative: "
-        "nouvelles fonctions, nouveaux modes, systeme de logs, detection/configuration, "
-        "et adaptations specifiques. Les parties d'origine restent creditees conformement "
+        "\"This project is based on the initial work of [author/project]. "
+        "It retains some common portions, but adds significant extensions: "
+        "new functions, new modes, logging system, detection/configuration, "
+        "and specific adaptations. Original portions remain credited in accordance "
         "a la licence du projet initial.\""
     )
     out.append("")
     out.append(
         "Attention: si la licence originale impose attribution, conservation de licence, "
-        "ou redistribution sous la meme licence, le rapport technique ne permet pas de "
+        "or redistribution under the same license, this technical report does not allow "
         "supprimer ces obligations."
     )
     out.append("")
@@ -507,7 +507,7 @@ def build_html_report(
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>Rapport similarite code</title>
+<title>Code similarity report</title>
 <style>
     body {{
         margin: 0;
@@ -599,24 +599,24 @@ def build_html_report(
 </head>
 <body>
 <header>
-    <h1>Rapport de similarité de code</h1>
+    <h1>Code similarity report</h1>
     <div class="legend">
         <span class="exactKey">Vert: repris exactement</span>
-        <span class="changedKey">Jaune: modifié / proche</span>
+        <span class="changedKey">Yellow: modified / similar</span>
         <span class="uniqueKey">Rouge: unique au fichier</span>
     </div>
 </header>
 <div class="wrap">
-    <h2>Résumé technique</h2>
+    <h2>Technical summary</h2>
     <pre class="summary">{html.escape(text_report)}</pre>
-    <h2>Comparaison visuelle complète</h2>
+    <h2>Full visual comparison</h2>
     <div class="grid">
         <section class="panel">
             <h2>A / original — {html.escape(str(file_a))}</h2>
             <div class="codebox">{a_html}</div>
         </section>
         <section class="panel">
-            <h2>B / modifié — {html.escape(str(file_b))}</h2>
+            <h2>B / modified — {html.escape(str(file_b))}</h2>
             <div class="codebox">{b_html}</div>
         </section>
     </div>
@@ -674,19 +674,19 @@ def analyze(file_a: Path, file_b: Path, outdir: Path, min_block: int) -> Tuple[P
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Compare deux fichiers source et genere un rapport de similarite."
+        description="Compare two source files and generate a similarity report."
     )
-    parser.add_argument("files", nargs="*", help="Deux fichiers a comparer")
+    parser.add_argument("files", nargs="*", help="Two files to compare")
     parser.add_argument(
         "--outdir",
         default=None,
-        help="Dossier de sortie. Par defaut: dossier du deuxieme fichier.",
+        help="Output directory. Default: directory of the second file.",
     )
     parser.add_argument(
         "--min-block",
         type=int,
         default=3,
-        help="Taille minimale des blocs identiques a lister. Defaut: 3 lignes.",
+        help="Minimum size of identical blocks to list. Default: 3 lines.",
     )
     return parser.parse_args(argv)
 
@@ -695,24 +695,24 @@ def main(argv: Sequence[str]) -> int:
     args = parse_args(argv)
 
     if len(args.files) != 2:
-        print("ERREUR: glisse exactement 2 fichiers sur ce script.")
+        print("ERROR: drag exactly 2 files onto this script.")
         print("")
         print("Usage:")
         print("  python code_similarity_reporter.py original.c modifie.c")
-        print("  ou glisse les 2 fichiers directement sur le .py")
-        input("\nAppuie sur Entree pour fermer...")
+        print("  or drag the 2 files directly onto the .py")
+        input("\nPress Enter to close...")
         return 2
 
     file_a = Path(args.files[0]).expanduser().resolve()
     file_b = Path(args.files[1]).expanduser().resolve()
 
     if not file_a.is_file():
-        print(f"ERREUR: fichier introuvable: {file_a}")
-        input("\nAppuie sur Entree pour fermer...")
+        print(f"ERROR: file not found: {file_a}")
+        input("\nPress Enter to close...")
         return 2
     if not file_b.is_file():
-        print(f"ERREUR: fichier introuvable: {file_b}")
-        input("\nAppuie sur Entree pour fermer...")
+        print(f"ERROR: file not found: {file_b}")
+        input("\nPress Enter to close...")
         return 2
 
     outdir = Path(args.outdir).expanduser().resolve() if args.outdir else file_b.parent / "similarity_report_output"
@@ -725,24 +725,24 @@ def main(argv: Sequence[str]) -> int:
     try:
         txt_path, ansi_path, html_path = analyze(file_a, file_b, outdir, args.min_block)
     except Exception as exc:
-        print(f"ERREUR pendant l'analyse: {exc}")
-        input("\nAppuie sur Entree pour fermer...")
+        print(f"ERROR during analysis: {exc}")
+        input("\nPress Enter to close...")
         return 1
 
     print("")
-    print("OK, rapports crees:")
+    print("OK, reports created:")
     print(f"- TXT normal : {txt_path}")
     print(f"- TXT couleur ANSI terminal : {ansi_path}")
     print(f"- HTML couleur navigateur   : {html_path}")
     print("")
-    print("Conseil: ouvre surtout le HTML pour voir les couleurs.")
+    print("Tip: open the HTML report to see the color highlighting.")
     if os.name == "nt":
         try:
             os.startfile(html_path)  # type: ignore[attr-defined]
         except Exception:
             pass
 
-    input("\nAppuie sur Entree pour fermer...")
+    input("\nPress Enter to close...")
     return 0
 
 
