@@ -229,7 +229,37 @@ function Capture-PayloadTcpLog {
         Add-ReportLine ("[payload-log] unavailable: " + $_.Exception.Message)
         Write-Host ("[payload-log] unavailable: " + $_.Exception.Message)
     } finally {
-        $Client.Close()
+        if ($null -ne $Client) {
+            $Client.Close()
+        }
+    }
+
+    if ($null -eq $Client) {
+        Add-ReportLine "[payload-log] TCP listener unavailable; trying FTP fallback log"
+        Write-Host "[payload-log] TCP listener unavailable; trying FTP fallback log"
+
+        $FallbackCaptured = $false
+        foreach ($Port in $FtpPorts) {
+            $FallbackResult = Invoke-LoggedCommand -Label "ftp payload log fallback port $Port" -AllowNonZero -Command {
+                & curl.exe --silent --show-error --connect-timeout 5 --max-time 15 --ftp-pasv "ftp://${PS5}:$Port/data/trophy_unlocker_log.txt"
+            }
+            if ($FallbackResult.Code -eq 0 -and $FallbackResult.Output.Count -gt 0) {
+                foreach ($Item in @($FallbackResult.Output)) {
+                    $Line = $Item.ToString()
+                    if ([string]::IsNullOrWhiteSpace($Line)) { continue }
+                    $PayloadLines.Add($Line) | Out-Null
+                }
+                $FallbackCaptured = $true
+                Write-Host "[payload-log] FTP fallback log captured from port $Port"
+                Add-ReportLine "[payload-log] FTP fallback log captured from port $Port"
+                break
+            }
+        }
+
+        if (-not $FallbackCaptured) {
+            Write-Host "[payload-log] no fallback log available at /data/trophy_unlocker_log.txt"
+            Add-ReportLine "[payload-log] no fallback log available at /data/trophy_unlocker_log.txt"
+        }
     }
 
     if (-not [string]::IsNullOrWhiteSpace($script:ExpectedPayloadSelection)) {
