@@ -10,7 +10,7 @@ Trophy selection is controlled from the PC launcher. The project keeps the spiri
 
 > Experimental project intended for developers and homebrew users. Use at your own risk. All scripts and the C source are included here.
 >
-> Confirmed working on FW 6.02. This is not a fork.
+> Confirmed working on FW 6.02. FW 13.60 now has an experimental safe profile that never reuses the FW 6.02 ShellCore offsets. It continues through the Trophy2/UDS path for diagnostics and testing. This is not a fork.
 
 ## Background and modifications
 
@@ -61,7 +61,7 @@ Ports used:
 
 Note: in the PC launcher, port `9021` is mainly used to capture or manage payload return traffic when running `Debug report PC` / `-DebugReport`. In normal mode, payload logs are mainly exposed by the debug payload on port `9022`.
 
-Configuration used during testing:
+Configuration used during original testing:
 
 ```text
 Console: PS5
@@ -69,6 +69,19 @@ Tested firmware: 6.02
 PC: Windows 11 / Windows 10 VM
 Debug: PS5 Debug 1.05 / kstuff 1.6.7
 ```
+
+Experimental profile currently included:
+
+```text
+Firmware: 13.60
+Strategy: Trophy2/UDS safe path
+ShellCore writes: disabled
+Status: experimental / diagnostics-first
+```
+
+The 13.60 profile intentionally does not contain guessed offsets. A firmware-specific
+ShellCore patch should only be added after the exact code signature is independently
+identified and validated.
 
 ## Python / dependencies
 
@@ -125,6 +138,27 @@ The menu then asks for:
 1. the console IP address;
 2. the send mode;
 3. an ID, range, or list depending on the selected mode.
+
+## Firmware profiles
+
+The launcher accepts a `-Firmware` argument.
+
+Examples:
+
+```powershell
+# Original verified 6.02 ShellCore patch path
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.94 -Firmware 6.02 -Mode id -Id 1
+
+# FW 13.60 safe path: no ShellCore writes, Trophy2/UDS diagnostics only
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\_support\run_unlocker_core.ps1" -PS5 192.168.1.94 -Firmware 13.60 -DebugReport -PayloadLogPort 9022 -Mode id -Id 1
+```
+
+Behavior:
+
+- `6.02`: uses the known byte-signature-checked ShellCore gate patch.
+- `13.60`: never applies the 6.02 offsets; continues with the Trophy2/UDS payload path.
+- `auto` or unknown firmware: no ShellCore write is permitted.
+- `-NoPatch`: explicitly disables any ShellCore patch regardless of profile.
 
 ## Available modes
 
@@ -292,11 +326,11 @@ The general flow is:
 ### PS5
 
 - The script detects the running PPSA game.
-- It attempts the FW 6.02 patch only when the known signature matches.
-- If the signature is different, offsets are unsupported, or ShellCore cannot be found:
-  - the script shows a warning;
-  - the debug report explains the reason;
-  - ELF injection may still continue depending on the situation.
+- The selected firmware profile decides whether a ShellCore RAM patch is allowed.
+- FW 6.02 uses the known signature-checked patch.
+- FW 13.60 is currently a safe no-write profile and proceeds through Trophy2/UDS diagnostics.
+- Unknown firmware never receives a ShellCore write.
+- If no verified patch is available, ELF injection can still continue so the debug payload can report the available Trophy2/UDS context and symbols.
 
 ## Logs and reports
 
