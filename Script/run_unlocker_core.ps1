@@ -45,7 +45,7 @@ if (Test-Path -LiteralPath $LocalPython) {
             $Python = $PyCmd.Source
             $PythonArgs = @("-3")
         } else {
-            throw "Python introuvable. Installe Python 3 ou modifie la variable `$Python dans ce script."
+            throw "Python not found. Install Python 3 or edit the `$Python variable in this script."
         }
     }
 }
@@ -116,7 +116,7 @@ function Invoke-LoggedCommand {
     Add-ReportLine "ExitCode: $Code"
 
     if (($Code -ne 0) -and -not $AllowNonZero) {
-        throw "$Label a echoue avec code $Code"
+        throw "$Label failed with code $Code"
     }
 
     [pscustomobject]@{
@@ -154,15 +154,15 @@ function Capture-PayloadTcpLog {
 
     Add-ReportLine ""
     Add-ReportLine "---- payload tcp log $Label ----"
-    Write-Host "[payload-log] capture PC ${PS5}:${PayloadLogPort} pendant ${PayloadLogSeconds}s"
-    Add-ReportLine "[payload-log] capture PC ${PS5}:${PayloadLogPort} pendant ${PayloadLogSeconds}s"
+    Write-Host "[payload-log] PC capture ${PS5}:${PayloadLogPort} for ${PayloadLogSeconds}s"
+    Add-ReportLine "[payload-log] PC capture ${PS5}:${PayloadLogPort} for ${PayloadLogSeconds}s"
     $PayloadLines = New-Object "System.Collections.Generic.List[string]"
 
     $Client = $null
     try {
         $OpenDeadline = [DateTime]::UtcNow.AddSeconds($PayloadLogSeconds)
-        Write-Host "[payload-log] attente ouverture port ${PayloadLogPort}..."
-        Add-ReportLine "[payload-log] attente ouverture port ${PayloadLogPort}..."
+        Write-Host "[payload-log] waiting for port ${PayloadLogPort} to open..."
+        Add-ReportLine "[payload-log] waiting for port ${PayloadLogPort} to open..."
 
         while ([DateTime]::UtcNow -lt $OpenDeadline -and $null -eq $Client) {
             $TryClient = [System.Net.Sockets.TcpClient]::new()
@@ -174,7 +174,7 @@ function Capture-PayloadTcpLog {
                     break
                 }
             } catch {
-                # Port pas encore ouvert: le ELF debug peut etre encore en demarrage.
+                # Port is not open yet: the debug ELF may still be starting.
             }
 
             if ($null -eq $Client) {
@@ -184,13 +184,13 @@ function Capture-PayloadTcpLog {
         }
 
         if ($null -eq $Client) {
-            Add-ReportLine "[payload-log] port ${PayloadLogPort} jamais ouvert pendant ${PayloadLogSeconds}s"
-            Write-Host "[payload-log] port ${PayloadLogPort} jamais ouvert pendant ${PayloadLogSeconds}s"
+            Add-ReportLine "[payload-log] port ${PayloadLogPort} never opened within ${PayloadLogSeconds}s"
+            Write-Host "[payload-log] port ${PayloadLogPort} never opened within ${PayloadLogSeconds}s"
             return
         }
 
-        Write-Host "[payload-log] connecte sur ${PayloadLogPort}"
-        Add-ReportLine "[payload-log] connecte sur ${PayloadLogPort}"
+        Write-Host "[payload-log] connected on ${PayloadLogPort}"
+        Add-ReportLine "[payload-log] connected on ${PayloadLogPort}"
         $Stream = $Client.GetStream()
         $Stream.ReadTimeout = 1000
         $Buffer = New-Object byte[] 4096
@@ -216,16 +216,16 @@ function Capture-PayloadTcpLog {
         }
 
         if ($CapturedBytes -eq 0) {
-            Add-ReportLine "[payload-log] connecte mais aucun log recu sur ${PayloadLogPort} pendant la capture"
-            Add-ReportLine "[payload-log] injection OK possible, mais le payload ne renvoie pas forcement de log TCP"
-            Write-Host "[payload-log] connecte mais aucun log recu sur ${PayloadLogPort} pendant la capture"
-            Write-Host "[payload-log] injection OK possible, mais le payload ne renvoie pas forcement de log TCP"
+            Add-ReportLine "[payload-log] connected but no log was received on ${PayloadLogPort} during capture"
+            Add-ReportLine "[payload-log] injection may still be OK; the payload does not always return TCP logs"
+            Write-Host "[payload-log] connected but no log was received on ${PayloadLogPort} during capture"
+            Write-Host "[payload-log] injection may still be OK; the payload does not always return TCP logs"
         } else {
-            Add-ReportLine "[payload-log] bytes recus: $CapturedBytes"
+            Add-ReportLine "[payload-log] bytes received: $CapturedBytes"
         }
     } catch {
-        Add-ReportLine ("[payload-log] indisponible: " + $_.Exception.Message)
-        Write-Host ("[payload-log] indisponible: " + $_.Exception.Message)
+        Add-ReportLine ("[payload-log] unavailable: " + $_.Exception.Message)
+        Write-Host ("[payload-log] unavailable: " + $_.Exception.Message)
     } finally {
         $Client.Close()
     }
@@ -253,15 +253,15 @@ function Capture-PayloadTcpLog {
         $Bounds = Get-SelectionBounds -Selection $script:ExpectedPayloadSelection
         if ($null -ne $Bounds -and $SeenTrophyCount -gt 0 -and $Bounds.End -ge $SeenTrophyCount) {
             $MaxId = $SeenTrophyCount - 1
-            Add-ReportLine "[payload-log] ERROR: selection demandee=$($script:ExpectedPayloadSelection) hors plage, trophy_count=$SeenTrophyCount max_id=$MaxId"
-            throw "Selection hors plage: demande=$($script:ExpectedPayloadSelection), max_id=$MaxId"
+            Add-ReportLine "[payload-log] ERROR: requested selection=$($script:ExpectedPayloadSelection) out of range, trophy_count=$SeenTrophyCount max_id=$MaxId"
+            throw "Selection out of range: requested=$($script:ExpectedPayloadSelection), max_id=$MaxId"
         }
 
         if ([string]::IsNullOrWhiteSpace($SeenSelection)) {
-            Add-ReportLine "[payload-log] WARNING: selection payload non vue dans le log TCP"
+            Add-ReportLine "[payload-log] WARNING: payload selection not seen in the TCP log"
         } elseif ($SeenSelection -ne $script:ExpectedPayloadSelection) {
-            Add-ReportLine "[payload-log] ERROR: selection demandee=$($script:ExpectedPayloadSelection) selection payload=$SeenSelection"
-            throw "Mismatch config payload: demande=$($script:ExpectedPayloadSelection) payload=$SeenSelection"
+            Add-ReportLine "[payload-log] ERROR: requested selection=$($script:ExpectedPayloadSelection) payload selection=$SeenSelection"
+            throw "Payload config mismatch: requested=$($script:ExpectedPayloadSelection) payload=$SeenSelection"
         } else {
             Add-ReportLine "[payload-log] selection OK: $SeenSelection"
         }
@@ -283,7 +283,7 @@ function Save-ErrorReport {
 
     $Body = @($Header) + @($script:ReportLines)
     [System.IO.File]::WriteAllLines($Path, [string[]]$Body, [System.Text.Encoding]::ASCII)
-    Write-Host "[rapport] Erreur enregistree cote PC: $Path"
+    Write-Host "[report] Error report saved on PC: $Path"
 }
 
 function Save-DebugReport {
@@ -294,7 +294,7 @@ function Save-DebugReport {
     $Header = @(New-ReportHeader -Status "OK")
     $Body = @($Header) + @($script:ReportLines)
     [System.IO.File]::WriteAllLines($Path, [string[]]$Body, [System.Text.Encoding]::ASCII)
-    Write-Host "[rapport] Rapport detaille OK cote PC: $Path"
+    Write-Host "[report] Detailed OK report saved on PC: $Path"
 }
 
 trap {
@@ -302,9 +302,9 @@ trap {
     exit 1
 }
 
-if (-not (Test-Path -LiteralPath $Elf)) { throw "ELF introuvable: $Elf" }
-if (-not (Test-Path -LiteralPath $Helper)) { throw "Helper introuvable: $Helper" }
-if (-not (Test-Path -LiteralPath $Deps)) { throw "Deps introuvables: $Deps" }
+if (-not (Test-Path -LiteralPath $Elf)) { throw "ELF not found: $Elf" }
+if (-not (Test-Path -LiteralPath $Helper)) { throw "Helper not found: $Helper" }
+if (-not (Test-Path -LiteralPath $Deps)) { throw "Dependencies not found: $Deps" }
 
 function Set-UnlockerConfig {
     param(
@@ -371,7 +371,7 @@ function Send-UnlockerConfig {
         }
     }
     if (-not $Uploaded) {
-        throw "Config non envoyee par FTP."
+        throw "Configuration was not sent over FTP."
     }
 }
 
@@ -384,7 +384,7 @@ function Invoke-Unlocker {
     }
     Capture-PayloadTcpLog -Label $Label
     if ($InjectResult.Code -ne 0) {
-        throw "Injection ELF echouee avec code $($InjectResult.Code)"
+        throw "ELF injection failed with code $($InjectResult.Code)"
     }
 }
 
@@ -410,39 +410,39 @@ if ($TargetLine -match 'CUSA\d{5}') {
 Write-Status "[auto] platform=$AutoPlatform target=$TargetLine"
 
 if ($NoPatch) {
-    Write-Status "[auto] patch FW602 skip: -NoPatch force"
+    Write-Status "[auto] FW602 patch skipped: -NoPatch forced"
 } elseif ($AutoPlatform -eq "ps4") {
-    Write-Status "[auto] patch FW602 skip: jeu PS4/CUSA detecte"
+    Write-Status "[auto] FW602 patch skipped: PS4/CUSA game detected"
 } elseif ($AutoPlatform -eq "ps5") {
-    Write-Status "[fw602] PS5/PPSA detecte: patch RAM seulement si signature FW 6.02 valide"
+    Write-Status "[fw602] PS5/PPSA detected: patch RAM only if the FW 6.02 signature is valid"
     $PatchExtraArgs = @()
     if ($DebugReport) { $PatchExtraArgs += "--debug-diff" }
     $PatchResult = Invoke-LoggedCommand -Label "fw602 patch auto" -AllowNonZero -Command {
         & $Python @PythonArgs $PatchScript $PS5 --port $DebugPort --mode patch --force @PatchExtraArgs
     }
     if ($PatchResult.Code -ne 0) {
-        Write-Status "[fw602] auto patch failed, retry pid=56 avec debug detaille"
+        Write-Status "[fw602] automatic patch failed; retrying pid=56 with detailed debug"
         $RetryPatchResult = Invoke-LoggedCommand -Label "fw602 patch pid=56 debug-diff" -AllowNonZero -Command {
             & $Python @PythonArgs $PatchScript $PS5 --port $DebugPort --mode patch --force --pid 56 --debug-diff
         }
         if ($RetryPatchResult.Code -ne 0) {
-            Write-Status "[fw602] WARN: patch non applique."
-            Write-Status "[fw602] Cause probable: signature FW differente, offsets non supportes ou ShellCore introuvable."
-            Write-Status "[fw602] Continue quand meme: config + ELF seront envoyes."
-            Write-Status "[fw602] Si rien ne pop, relance avec Debug rapport PC pour lire le detail."
+            Write-Status "[fw602] WARN: patch not applied."
+            Write-Status "[fw602] Probable cause: different firmware signature, unsupported offsets, or ShellCore not found."
+            Write-Status "[fw602] Continuing anyway: configuration + ELF will be sent."
+            Write-Status "[fw602] If nothing appears, rerun with PC debug report to read the details."
 
             Add-ReportLine ""
             Add-ReportLine "---- fw602 patch skipped, continue injection ----"
             Add-ReportLine ("AutoPatchExitCode: " + $PatchResult.Code)
             Add-ReportLine ("RetryPatchExitCode: " + $RetryPatchResult.Code)
-            Add-ReportLine "PatchStatus: non applique"
-            Add-ReportLine "Action: injection continue sans patch FW602"
+            Add-ReportLine "PatchStatus: not applied"
+            Add-ReportLine "Action: injection continues without FW602 patch"
         }
     }
 } else {
-    Write-Status "[auto] STOP: aucun jeu CUSA/PPSA detecte."
-    Write-Status "[auto] Lance un jeu puis relance le script. Aucun patch au hasard."
-    throw "Aucun jeu CUSA/PPSA detecte"
+    Write-Status "[auto] STOP: no CUSA/PPSA game detected."
+    Write-Status "[auto] Launch a game, then rerun the script. No blind patching."
+    throw "No CUSA/PPSA game detected"
 }
 
 if ($Mode -eq "list") {
@@ -455,13 +455,13 @@ if ($Mode -eq "list") {
         if ([string]::IsNullOrWhiteSpace($Part)) { continue }
         $Value = 0
         if (-not [int]::TryParse($Part.Trim(), [ref]$Value) -or $Value -lt 0) {
-            throw "ID invalide dans -Ids: $Part"
+            throw "Invalid ID in -Ids: $Part"
         }
         $ParsedIds += $Value
     }
 
     if ($ParsedIds.Count -eq 0) {
-        throw "Mode list: aucun ID valide dans -Ids."
+        throw "List mode: no valid ID in -Ids."
     }
 
     $OptimizedIds = @($ParsedIds | Sort-Object -Unique)
@@ -487,7 +487,7 @@ if ($Mode -eq "list") {
     Write-Status "[list] ids=$($ParsedIds -join ',')"
     Write-Status "[list] optimise=$($GroupLabels -join ' ; ')"
     if ($ParsedIds.Count -ne $OptimizedIds.Count) {
-        Write-Status "[list] doublons retires pour reduire les injections"
+        Write-Status "[list] duplicates removed to reduce injections"
     }
 
     for ($GroupIndex = 0; $GroupIndex -lt $Groups.Count; $GroupIndex++) {
@@ -511,7 +511,7 @@ if ($Mode -eq "list") {
             Start-Sleep -Seconds $ListDelaySeconds
         }
     }
-    Write-Status "[done] Liste envoyee. Aucun ancien log /data/trophy_unlocker_log.txt n'est recupere. Rapport PC dans debug_logs."
+    Write-Status "[done] List sent. No old /data/trophy_unlocker_log.txt is retrieved. PC report is in debug_logs."
     Save-DebugReport
     exit 0
 }
@@ -521,6 +521,6 @@ Send-UnlockerConfig
 Invoke-Unlocker -Label "mode=$Mode id=$Id range=$Range start=$Start wave=$Wave"
 
 Start-Sleep -Seconds $DelaySeconds
-Write-Status "[done] ELF envoye. Aucun ancien log /data/trophy_unlocker_log.txt n'est recupere. Rapport PC dans debug_logs."
+Write-Status "[done] ELF sent. No old /data/trophy_unlocker_log.txt is retrieved. PC report is in debug_logs."
 Save-DebugReport
 exit 0
