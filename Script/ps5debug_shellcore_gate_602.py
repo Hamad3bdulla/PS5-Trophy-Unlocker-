@@ -111,7 +111,7 @@ async def find_shellcore_pid(ps5, forced_pid):
             break
 
     if best is None:
-        raise RuntimeError("SceShellCore introuvable. Verifie que PS5Debug est actif.")
+        raise RuntimeError("SceShellCore not found. Verify that PS5Debug is active.")
     return best
 
 
@@ -150,7 +150,7 @@ async def find_shellcore_base(ps5, pid, maps):
         try:
             rows = await read_patch_bytes(ps5, pid, start)
         except Exception as exc:
-            attempts.append((name, start, end, prot, f"read erreur {type(exc).__name__}: {exc}"))
+            attempts.append((name, start, end, prot, f"read error {type(exc).__name__}: {exc}"))
             continue
 
         score = 0
@@ -163,9 +163,9 @@ async def find_shellcore_base(ps5, pid, maps):
             return m, rows, attempts
 
     raise ShellcoreBaseError(
-        "Base SceShellCore non trouvee avec les bytes attendus. "
-        "Patch refuse: signature FW 6.02 non valide, ShellCore introuvable, "
-        "ou PS5Debug pas pret.",
+        "SceShellCore base not found with the expected bytes. "
+        "Patch refused: invalid FW 6.02 signature, ShellCore not found, "
+        "or PS5Debug is not ready.",
         attempts,
     )
 
@@ -179,28 +179,28 @@ async def set_protection(ps5, pid, address, length, prot):
 
 async def main():
     parser = argparse.ArgumentParser(
-        description="Check/patch temporairement les gates LNC uniquement quand la signature FW 6.02 est valide."
+        description="Temporarily check/patch the LNC gates only when the FW 6.02 signature is valid."
     )
     parser.add_argument("host", nargs="?", default="192.168.1.131")
-    parser.add_argument("--port", type=int, default=PORT, help="Port PS5Debug/ps4debug.")
-    parser.add_argument("--pid", type=int, help="PID SceShellCore force, sinon auto-detecte.")
+    parser.add_argument("--port", type=int, default=PORT, help="PS5Debug/ps4debug port.")
+    parser.add_argument("--pid", type=int, help="Forced SceShellCore PID; otherwise auto-detected.")
     parser.add_argument(
         "--mode",
         choices=("check", "patch", "restore"),
         default="check",
-        help="check lit seulement, patch met les NOP en RAM, restore remet les bytes originaux.",
+        help="check reads only, patch writes NOPs in RAM, restore writes the original bytes back.",
     )
-    parser.add_argument("--debug-diff", action="store_true", help="Affiche un detail PC des bytes attendus/lus.")
-    parser.add_argument("--force", action="store_true", help="Ecrit meme si les bytes lus ne correspondent pas.")
+    parser.add_argument("--debug-diff", action="store_true", help="Show a PC-side diff of expected/read bytes.")
+    parser.add_argument("--force", action="store_true", help="Write even if the bytes read do not match.")
     args = parser.parse_args()
 
     ps5 = PS4Debug(args.host, args.port)
     print(f"[connect] {args.host}:{args.port}")
-    print(f"[support] patch PS5 valide seulement pour la signature FW {SUPPORTED_FW_LABEL}")
+    print(f"[support] PS5 patch valid only for FW signature {SUPPORTED_FW_LABEL}")
     try:
         print(f"[version] {await ps5.get_version()}")
     except Exception as exc:
-        print(f"[version] erreur {type(exc).__name__}: {exc}")
+        print(f"[version] error {type(exc).__name__}: {exc}")
 
     pid, info = await find_shellcore_pid(ps5, args.pid)
     if info is None:
@@ -223,10 +223,10 @@ async def main():
     try:
         base_map, rows, attempts = await find_shellcore_base(ps5, pid, maps)
     except Exception as exc:
-        print(f"[base] erreur {type(exc).__name__}: {exc}")
-        print(f"[result] STOP: patch non applique. Firmware/signature non supporte ou ShellCore non pret.")
+        print(f"[base] error {type(exc).__name__}: {exc}")
+        print(f"[result] STOP: patch not applied. Unsupported firmware/signature or ShellCore not ready.")
         if args.debug_diff and isinstance(exc, ShellcoreBaseError):
-            print("[debug-diff] essais de base executable")
+            print("[debug-diff] executable-base attempts")
             for name, start, end, prot, observed in exc.attempts:
                 print(
                     f"  map={name or '<anon>'} start=0x{start:016x} "
@@ -275,16 +275,16 @@ async def main():
 
     if args.mode == "check":
         if all_ok:
-            print("[result] OK: les deux branches sont localisees. Mode patch possible.")
+            print("[result] OK: both branches were located. Patch mode is available.")
             return 0
         else:
-            print("[result] STOP: bytes inattendus, ne patch pas sans revoir la sortie.")
+            print("[result] STOP: unexpected bytes; do not patch without reviewing the output.")
             return EXIT_UNSUPPORTED
 
     target_key = "patched" if args.mode == "patch" else "original"
     expected_key = "original" if args.mode == "patch" else "patched"
     if args.mode == "patch" and already_patched:
-        print("[result] deja patche.")
+        print("[result] already patched.")
         return 0
 
     writes = []
@@ -294,7 +294,7 @@ async def main():
         if data != expected and not args.force:
             print(
                 f"[stop] {patch['name']} attendu={hex_bytes(expected)} "
-                f"lu={hex_bytes(data)}. Utilise --force seulement si tu es sur."
+                f"read={hex_bytes(data)}. Use --force only if you are sure."
             )
             return EXIT_UNSUPPORTED
         writes.append((patch, addr, target))
@@ -324,7 +324,7 @@ async def main():
         print(f"[result] {args.mode} OK")
         return 0
     else:
-        print(f"[result] {args.mode} incomplet")
+        print(f"[result] {args.mode} incomplete")
         return EXIT_ERROR
 
 
