@@ -1,0 +1,49 @@
+name: Build PS5 Trophy Unlocker ELF
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - build-elf-ci
+  pull_request:
+    paths:
+      - "Main/**"
+      - "Makefile"
+      - ".github/workflows/build-elf.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 lld-18 make git python3
+
+      - name: Build and install PS5 Payload SDK
+        run: |
+          git clone --depth 1 https://github.com/ps5-payload-dev/sdk.git /tmp/ps5-payload-sdk-src
+          cd /tmp/ps5-payload-sdk-src
+          sudo make DESTDIR=/opt/ps5-payload-sdk install
+
+      - name: Build debug ELF
+        env:
+          PS5_PAYLOAD_SDK: /opt/ps5-payload-sdk
+        run: |
+          make clean
+          make debug
+          file "dist/PS5 Unlocker DEBUG.elf"
+          ls -lh dist/
+
+      - name: Upload debug ELF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PS5-Unlocker-FW13.60-debug
+          path: |
+            dist/PS5 Unlocker DEBUG.elf
+            dist/PS5-Unlocker-DEBUG.elf
+          if-no-files-found: error
