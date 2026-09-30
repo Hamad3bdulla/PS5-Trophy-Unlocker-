@@ -1491,6 +1491,29 @@ probe_trophy_dynlibs_for_pid(int pid, const char *phase)
 }
 
 static void
+probe_remote_getpid_symbol(int pid)
+{
+    static const char *mods[] = {
+        "libkernel.sprx",
+        "libkernel_web.sprx",
+        "libkernel_sys.sprx",
+        NULL
+    };
+
+    for (int i = 0; mods[i] != NULL; i++) {
+        uint32_t h = 0;
+        int rc = kernel_dynlib_handle(pid, mods[i], &h);
+        intptr_t addr = 0;
+
+        if (rc == 0 && h != 0)
+            addr = kernel_dynlib_dlsym(pid, h, "getpid");
+
+        logf("V82 rpc pid=%d module=%s handle_rc=0x%08x h=0x%08x getpid=%p",
+             pid, mods[i], rc, h, (void *)addr);
+    }
+}
+
+static void
 run_global_trophy_process_scan(void)
 {
     int hits = 0;
@@ -1514,6 +1537,7 @@ run_global_trophy_process_scan(void)
                  pid, trophy1, trophy2, uds);
             log_process_info_for_pid(pid);
             probe_trophy_dynlibs_for_pid(pid, "global-v81");
+            probe_remote_getpid_symbol(pid);
         }
     }
 
