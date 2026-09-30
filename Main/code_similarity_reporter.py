@@ -249,7 +249,7 @@ def classify_line_tags(a_lines: Sequence[str], b_lines: Sequence[str]) -> Tuple[
     Tags visuels:
       exact   = line included in an exact block
       changed = similar/modified line
-      unique  = ligne propre au fichier
+      unique  = line unique to the file
     """
     a_tags = ["unique"] * len(a_lines)
     b_tags = ["unique"] * len(b_lines)
@@ -329,16 +329,16 @@ def build_text_report(
     out.append("=" * 78)
     out.append("")
     out.append(f"Date analyse       : {time.strftime('%Y-%m-%d %H:%M:%S')}")
-    out.append(f"Fichier A/original : {file_a}")
-    out.append(f"Fichier B/modifie  : {file_b}")
+    out.append(f"File A/original     : {file_a}")
+    out.append(f"File B/modified     : {file_b}")
     out.append("")
     out.append("-" * 78)
-    out.append("1) RESUME CHIFFRE")
+    out.append("1) NUMERICAL SUMMARY")
     out.append("-" * 78)
-    out.append(f"Lignes A totales                         : {len(a_lines)}")
-    out.append(f"Lignes B totales                         : {len(b_lines)}")
-    out.append(f"Lignes A non vides                       : {count_nonempty(a_lines)}")
-    out.append(f"Lignes B non vides                       : {count_nonempty(b_lines)}")
+    out.append(f"Total lines in A                          : {len(a_lines)}")
+    out.append(f"Total lines in B                          : {len(b_lines)}")
+    out.append(f"Non-empty lines in A                      : {count_nonempty(a_lines)}")
+    out.append(f"Non-empty lines in B                      : {count_nonempty(b_lines)}")
     out.append("")
     out.append(f"Exact lines from A found in B, same order      : "
                f"{exact_order}/{len(a_lines)} = {pct(exact_order, len(a_lines)):.2f}%")
@@ -346,7 +346,7 @@ def build_text_report(
                f"{exact_any_order}/{len(a_lines)} = {pct(exact_any_order, len(a_lines)):.2f}%")
     out.append(f"Non-empty lines from A found verbatim in B      : "
                f"{exact_nonempty_any_order}/{len(a_nonempty)} = {pct(exact_nonempty_any_order, len(a_nonempty)):.2f}%")
-    out.append(f"Lignes normalisees communes hors commentaires/espaces: "
+    out.append(f"Common normalized lines excluding comments/spacing: "
                f"{norm_any_order}/{len(a_norm_nonempty)} = {pct(norm_any_order, len(a_norm_nonempty)):.2f}%")
     out.append("")
     out.append(f"Continuous exact blocks >= 3 lines             : {len(exact_blocks)}")
@@ -362,10 +362,10 @@ def build_text_report(
     out.append("")
     out.append("Quick reading:")
     if len(b_lines) > len(a_lines) * 2 and pct(exact_order, len(a_lines)) >= 50:
-        out.append("- Le fichier B semble etre une extension importante du fichier A.")
+        out.append("- File B appears to be a substantial extension of file A.")
         out.append("- A significant part of A is reused, but B also contains many additions.")
     elif pct(exact_order, len(a_lines)) >= 80:
-        out.append("- Le fichier B est tres proche du fichier A.")
+        out.append("- File B is very close to file A.")
     elif pct(exact_order, len(a_lines)) >= 40:
         out.append("- File B shares a substantial base with A.")
     else:
@@ -393,8 +393,8 @@ def build_text_report(
             else:
                 status = "fortement remaniee"
             out.append(
-                f"- {name}: A lignes {fa.start}-{fa.end} ({fa.line_count} lignes), "
-                f"B lignes {fb.start}-{fb.end} ({fb.line_count} lignes), "
+                f"- {name}: A lines {fa.start}-{fa.end} ({fa.line_count} lines), "
+                f"B lines {fb.start}-{fb.end} ({fb.line_count} lines), "
                 f"similarite brute {ratio_raw:.2f}%, normalisee {ratio_norm:.2f}% -> {status}"
             )
     out.append("")
@@ -405,7 +405,7 @@ def build_text_report(
     if only_b_funcs:
         for name in only_b_funcs:
             fb = funcs_b[name]
-            out.append(f"- {name}: lignes {fb.start}-{fb.end}, {fb.line_count} lignes")
+            out.append(f"- {name}: lines {fb.start}-{fb.end}, {fb.line_count} lignes")
     else:
         out.append("No added function detected in B.")
     out.append("")
@@ -416,7 +416,7 @@ def build_text_report(
     if only_a_funcs:
         for name in only_a_funcs:
             fa = funcs_a[name]
-            out.append(f"- {name}: lignes {fa.start}-{fa.end}, {fa.line_count} lignes")
+            out.append(f"- {name}: lines {fa.start}-{fa.end}, {fa.line_count} lignes")
     else:
         out.append("No function from A is missing from B by name.")
     out.append("")
@@ -429,8 +429,8 @@ def build_text_report(
     else:
         for n, block in enumerate(exact_blocks, start=1):
             out.append(
-                f"Bloc exact #{n}: A lignes {block.a_start}-{block.a_start + block.size - 1} "
-                f"<=> B lignes {block.b_start}-{block.b_start + block.size - 1} "
+                f"Exact block #{n}: A lines {block.a_start}-{block.a_start + block.size - 1} "
+                f"<=> B lines {block.b_start}-{block.b_start + block.size - 1} "
                 f"({block.size} lignes)"
             )
     out.append("")
@@ -444,8 +444,8 @@ def build_text_report(
     else:
         for n, block in enumerate(normalized_blocks, start=1):
             out.append(
-                f"Bloc normalise #{n}: A lignes {block.a_start}-{block.a_start + block.size - 1} "
-                f"<=> B lignes {block.b_start}-{block.b_start + block.size - 1} "
+                f"Normalized block #{n}: A lines {block.a_start}-{block.a_start + block.size - 1} "
+                f"<=> B lines {block.b_start}-{block.b_start + block.size - 1} "
                 f"({block.size} lignes)"
             )
     out.append("")
@@ -480,14 +480,14 @@ def build_ansi_report(
 ) -> str:
     out = []
     out.append(f"{ANSI_BOLD}{title}{ANSI_RESET}")
-    out.append("Legende: vert = repris exact, jaune = modifie/proche, rouge = unique")
+    out.append("Legend: green = exact reuse, yellow = modified/similar, red = unique")
     out.append("")
     limit = len(lines) if max_lines is None else min(len(lines), max_lines)
     for idx in range(limit):
         num = f"{idx + 1:5d} | "
         out.append(num + ansi_line(lines[idx], tags[idx]))
     if limit < len(lines):
-        out.append(f"... {len(lines) - limit} lignes non affichees ...")
+        out.append(f"... {len(lines) - limit} lines non affichees ...")
     return "\n".join(out)
 
 
@@ -603,7 +603,7 @@ def build_html_report(
     <div class="legend">
         <span class="exactKey">Vert: repris exactement</span>
         <span class="changedKey">Yellow: modified / similar</span>
-        <span class="uniqueKey">Rouge: unique au fichier</span>
+        <span class="uniqueKey">Red: unique to the file</span>
     </div>
 </header>
 <div class="wrap">
@@ -661,9 +661,9 @@ def analyze(file_a: Path, file_b: Path, outdir: Path, min_block: int) -> Tuple[P
     ansi = []
     ansi.append(text_report)
     ansi.append("\n\n" + "=" * 78 + "\n")
-    ansi.append(build_ansi_report("FICHIER A COLORE", a_lines, a_tags))
+    ansi.append(build_ansi_report("COLORIZED FILE A", a_lines, a_tags))
     ansi.append("\n\n" + "=" * 78 + "\n")
-    ansi.append(build_ansi_report("FICHIER B COLORE", b_lines, b_tags))
+    ansi.append(build_ansi_report("COLORIZED FILE B", b_lines, b_tags))
     ansi_path.write_text("\n".join(ansi), encoding="utf-8")
 
     html_report = build_html_report(file_a, file_b, text_report, a_lines, b_lines, a_tags, b_tags)
@@ -698,7 +698,7 @@ def main(argv: Sequence[str]) -> int:
         print("ERROR: drag exactly 2 files onto this script.")
         print("")
         print("Usage:")
-        print("  python code_similarity_reporter.py original.c modifie.c")
+        print("  python code_similarity_reporter.py original.c modified.c")
         print("  or drag the 2 files directly onto the .py")
         input("\nPress Enter to close...")
         return 2
@@ -719,7 +719,7 @@ def main(argv: Sequence[str]) -> int:
 
     print("Analyse en cours...")
     print(f"A/original: {file_a}")
-    print(f"B/modifie : {file_b}")
+    print(f"B/modified: {file_b}")
     print(f"Sortie    : {outdir}")
 
     try:
