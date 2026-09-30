@@ -242,7 +242,7 @@ function Capture-PayloadTcpLog {
         $FallbackCaptured = $false
         foreach ($Port in $FtpPorts) {
             $FallbackResult = Invoke-LoggedCommand -Label "ftp payload log fallback port $Port" -AllowNonZero -Command {
-                & curl.exe --silent --show-error --connect-timeout 5 --max-time 15 --ftp-pasv "ftp://${PS5}:$Port/data/trophy_unlocker_log.txt"
+                & curl.exe --silent --connect-timeout 5 --max-time 15 --ftp-pasv "ftp://${PS5}:$Port/data/trophy_unlocker_log.txt" 2>$null
             }
             if ($FallbackResult.Code -eq 0 -and $FallbackResult.Output.Count -gt 0) {
                 foreach ($Item in @($FallbackResult.Output)) {
