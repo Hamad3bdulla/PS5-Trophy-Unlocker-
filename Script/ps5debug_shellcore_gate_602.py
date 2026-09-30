@@ -5,28 +5,18 @@ import sys
 from ps4debug import PS4Debug
 from ps4debug.core import VMProtection
 
+from firmware_profiles import (
+    get_firmware_profile,
+    normalize_firmware,
+    shellcore_patch_allowed,
+)
+
 
 PORT = 744
 TEXT_FILE_OFFSET = 0x4000
 PAGE_SIZE = 0x4000
-SUPPORTED_FW_LABEL = "6.02"
 EXIT_UNSUPPORTED = 20
 EXIT_ERROR = 1
-
-PATCHES = (
-    {
-        "name": "getApp0DirPath isDebuggerOrAppHome gate",
-        "file_offset": 0x004D790C,
-        "original": bytes.fromhex("0f 84 87 00 00 00"),
-        "patched": b"\x90" * 6,
-    },
-    {
-        "name": "getSceSysDirPath isDebuggerOrAppHome gate",
-        "file_offset": 0x004D7BEC,
-        "original": bytes.fromhex("0f 84 86 00 00 00"),
-        "patched": b"\x90" * 6,
-    },
-)
 
 
 class RawVMProtection:
@@ -90,6 +80,20 @@ def prot_to_vm(prot):
         return RawVMProtection(prot & int(VMProtection.VM_PROT_ALL))
 
 
+def decode_patches(profile):
+    rows = []
+    for patch in profile["patches"]:
+        rows.append(
+            {
+                "name": patch["name"],
+                "file_offset": int(patch["file_offset"]),
+                "original": bytes.fromhex(patch["original_hex"]),
+                "patched": bytes.fromhex(patch["patched_hex"]),
+            }
+        )
+    return tuple(rows)
+
+
 async def find_shellcore_pid(ps5, forced_pid):
     if forced_pid is not None:
         return forced_pid, None
@@ -115,9 +119,9 @@ async def find_shellcore_pid(ps5, forced_pid):
     return best
 
 
-async def read_patch_bytes(ps5, pid, base):
+async def read_patch_bytes(ps5, pid, base, patches):
     rows = []
-    for patch in PATCHES:
+    for patch in patches:
         delta = patch["file_offset"] - TEXT_FILE_OFFSET
         addr = base + delta
         current = await ps5.read_memory(pid, addr, len(patch["original"]))
@@ -125,8 +129,9 @@ async def read_patch_bytes(ps5, pid, base):
     return rows
 
 
-async def find_shellcore_base(ps5, pid, maps):
+async def find_shellcore_base(ps5, pid, maps, patches):
     candidates = []
+    min_size = patches[-1]["file_offset"] - TEXT_FILE_OFFSET + 0x1000
     for m in maps:
         name = clean(field(m, "name"))
         start = int(field(m, "start", 0))
@@ -135,7 +140,7 @@ async def find_shellcore_base(ps5, pid, maps):
         size = end - start
         if not (prot & int(VMProtection.VM_PROT_EXECUTE)):
             continue
-        if size < (PATCHES[-1]["file_offset"] - TEXT_FILE_OFFSET + 0x1000):
+        if size < min_size:
             continue
         candidates.append((m, name, start, end, prot, size))
 
@@ -148,7 +153,7 @@ async def find_shellcore_base(ps5, pid, maps):
     attempts = []
     for m, name, start, end, prot, size in ordered:
         try:
-            rows = await read_patch_bytes(ps5, pid, start)
+            rows = await read_patch_bytes(ps5, pid, start, patches)
         except Exception as exc:
             attempts.append((name, start, end, prot, f"read error {type(exc).__name__}: {exc}"))
             continue
@@ -159,13 +164,12 @@ async def find_shellcore_base(ps5, pid, maps):
                 score += 1
 
         attempts.append((name, start, end, prot, ", ".join(hex_bytes(row[2]) for row in rows)))
-        if score == len(PATCHES):
+        if score == len(patches):
             return m, rows, attempts
 
     raise ShellcoreBaseError(
-        "SceShellCore base not found with the expected bytes. "
-        "Patch refused: invalid FW 6.02 signature, ShellCore not found, "
-        "or PS5Debug is not ready.",
+        "SceShellCore base not found with the expected firmware bytes. "
+        "Patch refused because the signature does not match or ShellCore is not ready.",
         attempts,
     )
 
@@ -179,24 +183,63 @@ async def set_protection(ps5, pid, address, length, prot):
 
 async def main():
     parser = argparse.ArgumentParser(
-        description="Temporarily check/patch the LNC gates only when the FW 6.02 signature is valid."
+        description=(
+            "Firmware-aware SceShellCore gate helper. "
+            "Only firmware profiles with verified byte signatures are writable."
+        )
     )
     parser.add_argument("host", nargs="?", default="192.168.1.131")
     parser.add_argument("--port", type=int, default=PORT, help="PS5Debug/ps4debug port.")
     parser.add_argument("--pid", type=int, help="Forced SceShellCore PID; otherwise auto-detected.")
     parser.add_argument(
+        "--firmware",
+        default="auto",
+        help="Firmware profile to use, for example 6.02 or 13.60. Default: auto.",
+    )
+    parser.add_argument(
         "--mode",
         choices=("check", "patch", "restore"),
         default="check",
-        help="check reads only, patch writes NOPs in RAM, restore writes the original bytes back.",
+        help="check reads only, patch applies a verified RAM patch, restore restores verified original bytes.",
     )
     parser.add_argument("--debug-diff", action="store_true", help="Show a PC-side diff of expected/read bytes.")
-    parser.add_argument("--force", action="store_true", help="Write even if the bytes read do not match.")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "Legacy compatibility flag. It cannot enable writes for a firmware "
+            "profile that has no verified patch."
+        ),
+    )
     args = parser.parse_args()
 
-    ps5 = PS4Debug(args.host, args.port)
+    firmware = normalize_firmware(args.firmware)
+    profile = get_firmware_profile(firmware)
+
     print(f"[connect] {args.host}:{args.port}")
-    print(f"[support] PS5 patch valid only for FW signature {SUPPORTED_FW_LABEL}")
+    print(f"[firmware] requested={firmware}")
+
+    if profile is None:
+        print("[result] STOP: firmware profile is unknown. No ShellCore write will be attempted.")
+        return EXIT_UNSUPPORTED
+
+    print(f"[profile] strategy={profile['strategy']}")
+    print(f"[profile] {profile['notes']}")
+
+    if not shellcore_patch_allowed(firmware):
+        print(
+            f"[safe] FW {profile['label']} has no verified ShellCore patch in this project. "
+            "No memory write will be attempted."
+        )
+        if args.mode in {"patch", "restore"}:
+            print("[result] SAFE-SKIP: continue with Trophy2/UDS payload diagnostics instead.")
+        else:
+            print("[result] SAFE: profile is supported without a ShellCore patch.")
+        return 0
+
+    patches = decode_patches(profile)
+
+    ps5 = PS4Debug(args.host, args.port)
     try:
         print(f"[version] {await ps5.get_version()}")
     except Exception as exc:
@@ -221,10 +264,10 @@ async def main():
     print(f"[maps] count={len(maps)}")
 
     try:
-        base_map, rows, attempts = await find_shellcore_base(ps5, pid, maps)
+        base_map, rows, attempts = await find_shellcore_base(ps5, pid, maps, patches)
     except Exception as exc:
         print(f"[base] error {type(exc).__name__}: {exc}")
-        print(f"[result] STOP: patch not applied. Unsupported firmware/signature or ShellCore not ready.")
+        print("[result] STOP: patch not applied. Firmware signature or ShellCore layout did not match.")
         if args.debug_diff and isinstance(exc, ShellcoreBaseError):
             print("[debug-diff] executable-base attempts")
             for name, start, end, prot, observed in exc.attempts:
@@ -232,14 +275,6 @@ async def main():
                     f"  map={name or '<anon>'} start=0x{start:016x} "
                     f"end=0x{end:016x} prot=0x{prot:x} observed={observed}"
                 )
-        print("[candidate maps]")
-        for m in maps:
-            name = clean(field(m, "name"))
-            start = int(field(m, "start", 0))
-            end = int(field(m, "end", 0))
-            prot = int(field(m, "prot", 0))
-            if prot & int(VMProtection.VM_PROT_EXECUTE):
-                print(f"  {name:36} 0x{start:016x}-0x{end:016x} prot=0x{prot:x}")
         return EXIT_UNSUPPORTED
 
     base = int(field(base_map, "start", 0))
@@ -275,14 +310,14 @@ async def main():
 
     if args.mode == "check":
         if all_ok:
-            print("[result] OK: both branches were located. Patch mode is available.")
+            print("[result] OK: all verified patch sites were located.")
             return 0
-        else:
-            print("[result] STOP: unexpected bytes; do not patch without reviewing the output.")
-            return EXIT_UNSUPPORTED
+        print("[result] STOP: unexpected bytes; no write was attempted.")
+        return EXIT_UNSUPPORTED
 
     target_key = "patched" if args.mode == "patch" else "original"
     expected_key = "original" if args.mode == "patch" else "patched"
+
     if args.mode == "patch" and already_patched:
         print("[result] already patched.")
         return 0
@@ -291,28 +326,29 @@ async def main():
     for patch, addr, data in rows:
         expected = patch[expected_key]
         target = patch[target_key]
-        if data != expected and not args.force:
+        if data != expected:
             print(
-                f"[stop] {patch['name']} attendu={hex_bytes(expected)} "
-                f"read={hex_bytes(data)}. Use --force only if you are sure."
+                f"[stop] {patch['name']} expected={hex_bytes(expected)} "
+                f"read={hex_bytes(data)}. Signature mismatch; refusing write."
             )
             return EXIT_UNSUPPORTED
         writes.append((patch, addr, target))
 
     first_addr = min(addr for _patch, addr, _target in writes)
     last_addr = max(addr + len(target) for _patch, addr, target in writes)
-    print("[protect] RWX temporaire")
+
+    print("[protect] temporary RWX")
     print(await set_protection(ps5, pid, first_addr, last_addr - first_addr, VMProtection.VM_PROT_ALL))
 
     for patch, addr, target in writes:
         result = await ps5.write_memory(pid, addr, target)
         print(f"[write] {patch['name']} addr=0x{addr:016x} -> {hex_bytes(target)} result={result}")
 
-    print("[protect] restore protection")
+    print("[protect] restoring protection")
     print(await set_protection(ps5, pid, first_addr, last_addr - first_addr, prot_to_vm(prot)))
 
     print("[verify]")
-    rows = await read_patch_bytes(ps5, pid, base)
+    rows = await read_patch_bytes(ps5, pid, base, patches)
     ok = True
     for patch, addr, data in rows:
         expected = patch[target_key]
@@ -323,9 +359,9 @@ async def main():
     if ok:
         print(f"[result] {args.mode} OK")
         return 0
-    else:
-        print(f"[result] {args.mode} incomplete")
-        return EXIT_ERROR
+
+    print(f"[result] {args.mode} incomplete")
+    return EXIT_ERROR
 
 
 if __name__ == "__main__":
