@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include <fcntl.h>\n#include <sys/mman.h>
 
 #include <ps5/kernel.h>
 #include "pt.h"
