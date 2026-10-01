@@ -44,7 +44,7 @@ jobs:
           clang++ --version >/dev/null
           make -f /opt/ps5-payload-sdk/toolchain/prospero.mk >/dev/null 2>&1 || true
           source /dev/null
-          /opt/ps5-payload-sdk/bin/prospero-clang -Wall -Wextra -O2 -g -I/tmp/ps5-elfldr -o dist/FW13.60-PTCall-Probe.elf Main/ptcall_probe.c /tmp/ps5-elfldr/pt.c
+          /opt/ps5-payload-sdk/bin/prospero-clang -Wall -Wextra -Wno-error=implicit-function-declaration -O2 -g -I/tmp/ps5-elfldr -o dist/FW13.60-PTCall-Probe.elf Main/ptcall_probe.c /tmp/ps5-elfldr/pt.c
           file "dist/PS5 Unlocker DEBUG.elf"
           file "dist/FW13.60-Probe.elf"
           file "dist/FW13.60-Remote-Trophy-Probe.elf"
