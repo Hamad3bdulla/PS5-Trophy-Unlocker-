@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - build-elf-ci
+      - fw1360-ptcall-probe
   pull_request:
     paths:
       - "Main/**"
@@ -31,16 +32,24 @@ jobs:
           cd /tmp/ps5-payload-sdk-src
           sudo make DESTDIR=/opt/ps5-payload-sdk install
 
+      - name: Fetch elfldr pt_call helper
+        run: git clone --depth 1 https://github.com/ps5-payload-dev/elfldr.git /tmp/ps5-elfldr
+
       - name: Build diagnostic ELFs
         env:
           PS5_PAYLOAD_SDK: /opt/ps5-payload-sdk
         run: |
           make clean
           make all
+          clang++ --version >/dev/null
+          make -f /opt/ps5-payload-sdk/toolchain/prospero.mk >/dev/null 2>&1 || true
+          source /dev/null
+          /opt/ps5-payload-sdk/bin/clang -Wall -Wextra -O2 -g -I/tmp/ps5-elfldr -o dist/FW13.60-PTCall-Probe.elf Main/ptcall_probe.c /tmp/ps5-elfldr/pt.c
           file "dist/PS5 Unlocker DEBUG.elf"
           file "dist/FW13.60-Probe.elf"
           file "dist/FW13.60-Remote-Trophy-Probe.elf"
           file "dist/FW13.60-Global-Trophy-Scan.elf"
+          file "dist/FW13.60-PTCall-Probe.elf"
           ls -lh dist/
 
       - name: Upload build artifact
@@ -53,4 +62,5 @@ jobs:
             dist/FW13.60-Probe.elf
             dist/FW13.60-Remote-Trophy-Probe.elf
             dist/FW13.60-Global-Trophy-Scan.elf
+            dist/FW13.60-PTCall-Probe.elf
           if-no-files-found: error
