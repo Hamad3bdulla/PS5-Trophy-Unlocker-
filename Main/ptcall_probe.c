@@ -6,7 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <fcntl.h>\n#include <sys/mman.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 #include <ps5/kernel.h>
 #include "pt.h"
@@ -95,5 +96,26 @@ int main(void) {
     }
 
     log_line("[result] SUCCESS pt_call executed inside target process");
+
+    uint32_t h = 0;
+    if (kernel_dynlib_handle(pid, "libSceNpTrophy2.sprx", &h) == 0 && h != 0) {
+        intptr_t fn = kernel_dynlib_dlsym(pid, h, "sceNpTrophy2CreateHandle");
+        log_line("[stage2] module=0x%08x fn=0x%lx", h, (unsigned long)fn);
+        if (fn && pt_attach(pid) == 0) {
+            intptr_t scratch = pt_mmap(pid, 0, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+            log_line("[stage2] scratch=0x%lx", (unsigned long)scratch);
+            if (scratch && scratch != (intptr_t)-1) {
+                int32_t out = 0;
+                pt_copyin(pid, &out, scratch, sizeof(out));
+                long rc = pt_call(pid, fn, scratch, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL);
+                pt_copyout(pid, scratch, &out, sizeof(out));
+                log_line("[stage2] rc=0x%lx out=%d", (unsigned long)rc, out);
+                pt_munmap(pid, scratch, 4096);
+            }
+            pt_detach(pid, SIGCONT);
+            kill(pid, SIGCONT);
+        }
+    }
+
     return 0;
 }
